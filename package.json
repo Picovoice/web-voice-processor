@@ -1,0 +1,31 @@
+{
+  "name": "@picovoice/web-voice-processor",
+  "version": "1.1.0",
+  "description": "a library for real-time voice processing in web browsers",
+  "main": "src/web_voice_processor.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Picovoice/web-voice-processor.git"
+  },
+  "keywords": [
+    "realtime",
+    "real-time",
+    "voice processing",
+    "audio processing",
+    "browser",
+    "web browser"
+  ],
+  "author": {
+    "name": "Picovoice Inc.",
+    "email": "hello@picovoice.ai",
+    "url": "https://picovoice.ai"
+  },
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/Picovoice/web-voice-processor/issues"
+  },
+  "homepage": "https://github.com/Picovoice/web-voice-processor#readme"
+}
