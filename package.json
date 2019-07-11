@@ -1,6 +1,6 @@
 {
   "name": "@picovoice/web-voice-processor",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "a library for real-time voice processing in web browsers",
   "main": "src/web_voice_processor.js",
   "scripts": {
