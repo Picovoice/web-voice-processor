@@ -1,5 +1,7 @@
 # Web Voice Processor
 
+[![GitHub release](https://img.shields.io/github/release/Picovoice/web-voice-processor.svg)](https://github.com/Picovoice/web-voice-processor/releases)
+
 Made in Vancouver, Canada by [Picovoice](https://picovoice.ai)
 
 This is a library for real-time voice processing in web browsers.

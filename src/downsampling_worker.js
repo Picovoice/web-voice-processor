@@ -1,12 +1,12 @@
 onmessage = function (e) {
     switch (e.data.command) {
-        case 'init':
+        case "init":
             init(e.data.inputSampleRate);
             break;
-        case 'process':
+        case "process":
             process(e.data.inputFrame);
             break;
-        case 'reset':
+        case "reset":
             reset();
             break;
     }

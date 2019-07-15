@@ -1,5 +1,3 @@
-navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
-
 WebVoiceProcessor = (function () {
     let downsampler;
 
@@ -7,10 +5,9 @@ WebVoiceProcessor = (function () {
 
     let start = function (engines, downsamplerScript, errorCallback) {
         if (!downsampler) {
-            navigator.getUserMedia(
-                {audio: true},
-                stream => {
-                    let audioContext = new (AudioContext || webkitAudioContext)();
+            navigator.mediaDevices.getUserMedia({audio: true})
+                .then(stream => {
+                    let audioContext = new (window.AudioContext || window.webkitAudioContext)();
                     let audioSource = audioContext.createMediaStreamSource(stream);
                     let node = audioContext.createScriptProcessor(4096, 1, 1);
                     node.onaudioprocess = function (e) {
@@ -18,20 +15,20 @@ WebVoiceProcessor = (function () {
                             return;
                         }
 
-                        downsampler.postMessage({command: 'process', inputFrame: e.inputBuffer.getChannelData(0)});
+                        downsampler.postMessage({command: "process", inputFrame: e.inputBuffer.getChannelData(0)});
                     };
                     audioSource.connect(node);
                     node.connect(audioContext.destination);
 
                     downsampler = new Worker(downsamplerScript);
-                    downsampler.postMessage({command: 'init', inputSampleRate: audioSource.context.sampleRate});
+                    downsampler.postMessage({command: "init", inputSampleRate: audioSource.context.sampleRate});
                     downsampler.onmessage = function (e) {
                         engines.forEach(function (engine) {
                             engine.postMessage({command: "process", inputFrame: e.data});
                         });
                     };
-                },
-                errorCallback);
+                })
+                .catch(errorCallback);
         }
 
         isRecording = true;
@@ -39,7 +36,7 @@ WebVoiceProcessor = (function () {
 
     let stop = function () {
         isRecording = false;
-        downsampler.postMessage({command: 'reset'});
+        downsampler.postMessage({command: "reset"});
     };
 
     return {start: start, stop: stop};
