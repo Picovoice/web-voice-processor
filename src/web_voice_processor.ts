@@ -1,0 +1,134 @@
+/*
+    Copyright 2018-2021 Picovoice Inc.
+
+    You may not use this file except in compliance with the license. A copy of the license is located in the "LICENSE"
+    file accompanying this source.
+
+    Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+    an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+    specific language governing permissions and limitations under the License.
+*/
+
+import { WorkerCommand } from './worker_types';
+import DownsamplingWorker from 'web-worker:./downsampling_worker.ts';
+import { browserCompatibilityCheck as check, BrowserFeatures } from './utils';
+
+/**
+ * Obtain microphone permission and audio stream;
+ * Downsample audio into 16kHz single-channel PCM for speech recognition.
+ * Continuously send audio frames to voice processing engines.
+ */
+export default class WebVoiceProcessor {
+  private _audioContext: AudioContext;
+  private _downsamplingWorker: Worker;
+  private _engines: Array<Worker>;
+  private _isRecording: boolean;
+
+  static browserCompatibilityCheck(): BrowserFeatures {
+    return check();
+  }
+
+  /**
+   * Acquires the microphone audio stream (incl. asking permission),
+   * and continuously forwards the downsampled audio to speech recognition worker engines.
+   *
+   * @param {Array<Worker>} engines - Web workers that perform speech recognition (e.g. Porcupine, Rhino)
+   * @param {boolean} start - Immediately start listening after initialization is complete
+   * @return {Promise<WebVoiceProcessor>} - the promise from mediaDevices.getUserMedia()
+   */
+  public static async initWithWorkerEngines(
+    engines: Array<Worker>,
+    start = true,
+  ): Promise<WebVoiceProcessor> {
+    // Get microphone access and ask user permission
+    const microphoneStream: MediaStream = await navigator.mediaDevices.getUserMedia(
+      {
+        audio: true,
+      },
+    );
+
+    return new WebVoiceProcessor(microphoneStream, engines, start);
+  }
+
+  constructor(
+    microphoneStream: MediaStream,
+    engines: Array<Worker>,
+    start: boolean,
+  ) {
+    this._engines = engines;
+    this._isRecording = start;
+
+    this._downsamplingWorker = new DownsamplingWorker();
+
+    this._audioContext = new (window.AudioContext ||
+      // @ts-ignore window.webkitAudioContext
+      window.webkitAudioContext)();
+    const audioSource = this._audioContext.createMediaStreamSource(
+      microphoneStream,
+    );
+    const node = this._audioContext.createScriptProcessor(4096, 1, 1);
+    node.onaudioprocess = function (event: AudioProcessingEvent): void {
+      if (!this._isRecording) {
+        return;
+      }
+
+      this._downsamplingWorker.postMessage({
+        command: WorkerCommand.Process,
+        inputFrame: event.inputBuffer.getChannelData(0),
+      });
+    }.bind(this);
+
+    audioSource.connect(node);
+    node.connect(this._audioContext.destination);
+
+    this._downsamplingWorker.postMessage({
+      command: WorkerCommand.Init,
+      inputSampleRate: audioSource.context.sampleRate,
+    });
+
+    this._downsamplingWorker.onmessage = (
+      event: MessageEvent<Int16Array>,
+    ): void => {
+      for (const engine of this._engines) {
+        engine.postMessage({
+          command: WorkerCommand.Process,
+          inputFrame: event.data,
+        });
+      }
+    };
+  }
+
+  /**
+   * Stop listening to the microphonel release all resources; terminate downsampling worker.
+   *
+   * @return {Promise<void>} - the promise from AudioContext.close()
+   */
+  public async release(): Promise<void> {
+    this._isRecording = false;
+    this._downsamplingWorker.postMessage({ command: WorkerCommand.Reset });
+    this._downsamplingWorker.terminate();
+    this._downsamplingWorker = null;
+    await this._audioContext.close();
+    this._audioContext = null;
+  }
+
+  public start(): void {
+    this._isRecording = true;
+  }
+
+  public pause(): void {
+    this._isRecording = false;
+  }
+
+  public resume(): void {
+    this._isRecording = true;
+  }
+
+  get audioContext(): AudioContext {
+    return this._audioContext;
+  }
+
+  get isRecording(): boolean {
+    return this._isRecording;
+  }
+}
