@@ -9,7 +9,11 @@
     specific language governing permissions and limitations under the License.
 */
 
-import { WorkerCommand } from './worker_types';
+import {
+  WorkerCommand,
+  DownsamplingWorkerCommandInput,
+  DownsamplingWorkerCommandOutput,
+} from './worker_types';
 import DownsamplingWorker from 'web-worker:./downsampling_worker.ts';
 import { browserCompatibilityCheck as check, BrowserFeatures } from './utils';
 
@@ -23,6 +27,10 @@ export default class WebVoiceProcessor {
   private _downsamplingWorker: Worker;
   private _engines: Array<Worker>;
   private _isRecording: boolean;
+  private _pcmBlob: Blob | null;
+  private _audioDumpPromise: Promise<Blob> = null;
+  private _audioDumpResolve: any = null;
+  private _audioDumpReject: any = null;
 
   static browserCompatibilityCheck(): BrowserFeatures {
     return check();
@@ -38,7 +46,7 @@ export default class WebVoiceProcessor {
    */
   public static async initWithWorkerEngines(
     engines: Array<Worker>,
-    start = true,
+    start: boolean = true,
   ): Promise<WebVoiceProcessor> {
     // Get microphone access and ask user permission
     const microphoneStream: MediaStream = await navigator.mediaDevices.getUserMedia(
@@ -86,16 +94,49 @@ export default class WebVoiceProcessor {
       inputSampleRate: audioSource.context.sampleRate,
     });
 
-    this._downsamplingWorker.onmessage = (
-      event: MessageEvent<Int16Array>,
-    ): void => {
-      for (const engine of this._engines) {
-        engine.postMessage({
-          command: WorkerCommand.Process,
-          inputFrame: event.data,
-        });
+    this._downsamplingWorker.onmessage = (event: MessageEvent<any>): void => {
+      switch (event.data.command) {
+        case 'output': {
+          for (const engine of this._engines) {
+            engine.postMessage({
+              command: WorkerCommand.Process,
+              inputFrame: event.data.outputFrame,
+            });
+          }
+          break;
+        }
+        case DownsamplingWorkerCommandOutput.AudioDumpComplete: {
+          this._audioDumpResolve(event.data.blob);
+          this._audioDumpPromise = null;
+          this._audioDumpResolve = null;
+          this._audioDumpReject = null;
+          break;
+        }
       }
     };
+  }
+
+  /**
+   * Record some sample raw signed 16bit PCM data for some duration, then pack it as a Blob
+   *
+   * @param {number} durationMs - the duration of the recording in milliseconds
+   */
+  public async audioDump(durationMs: number = 3000): Promise<Blob> {
+    if (this._audioDumpPromise !== null) {
+      return Promise.reject('Audio dump already in progress');
+    }
+
+    this._downsamplingWorker.postMessage({
+      command: DownsamplingWorkerCommandInput.StartAudioDump,
+      durationMs: durationMs,
+    });
+
+    this._audioDumpPromise = new Promise<Blob>((resolve, reject) => {
+      this._audioDumpResolve = resolve;
+      this._audioDumpReject = reject;
+    });
+
+    return this._audioDumpPromise;
   }
 
   /**
@@ -122,6 +163,10 @@ export default class WebVoiceProcessor {
 
   public resume(): void {
     this._isRecording = true;
+  }
+
+  public pcmBlob(): Blob {
+    return this._pcmBlob;
   }
 
   get audioContext(): AudioContext {

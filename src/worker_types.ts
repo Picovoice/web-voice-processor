@@ -17,3 +17,27 @@ export enum WorkerCommand {
   Resume = 'resume',
   Release = 'release',
 }
+
+export type DownsamplingWorkerMessageInput = {
+  command: WorkerCommand | DownsamplingWorkerCommandInput;
+  frameLength?: number;
+  inputFrame?: Int16Array;
+  inputSampleRate?: number;
+  outputSampleRate?: number;
+  durationMs?: number;
+};
+
+export type DownsamplingWorkerMessageOutput = {
+  command: WorkerCommand | DownsamplingWorkerMessageOutput;
+  outputFrame?: Int16Array;
+  blob?: Blob;
+};
+
+export enum DownsamplingWorkerCommandInput {
+  StartAudioDump = 'start_audio_dump',
+}
+
+export enum DownsamplingWorkerCommandOutput {
+  AudioDumpComplete = 'audio_dump_complete',
+  Blob = 'blob',
+}

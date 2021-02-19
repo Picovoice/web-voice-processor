@@ -9,15 +9,12 @@
     specific language governing permissions and limitations under the License.
 */
 
-import { WorkerCommand } from './worker_types';
-
-type DownsamplingWorkerMessage = {
-  command: WorkerCommand;
-  frameLength?: number;
-  inputFrame?: Int16Array;
-  inputSampleRate?: number;
-  outputSampleRate?: number;
-};
+import {
+  WorkerCommand,
+  DownsamplingWorkerCommandInput,
+  DownsamplingWorkerMessageInput,
+  DownsamplingWorkerCommandOutput,
+} from './worker_types';
 
 const PV_FRAME_LENGTH = 512;
 const PV_SAMPLE_RATE = 16000;
@@ -27,6 +24,11 @@ let _inputSampleRate: number;
 let _outputSampleRate: number;
 let _frameLength: number;
 let _inputBuffer: Array<number> = [];
+
+let _audioDumpActive: boolean;
+let _audioDumpBuffer: Int16Array;
+let _audioDumpBufferIndex: number;
+let _audioDumpNumFrames: number;
 
 function init(
   inputSampleRate: number,
@@ -42,6 +44,13 @@ function init(
   console.assert(Number.isInteger(_frameLength));
 
   _inputBuffer = [];
+}
+
+function startAudioDump(durationMs: number): void {
+  _audioDumpNumFrames = durationMs * (PV_FRAME_LENGTH / PV_SAMPLE_RATE);
+  _audioDumpActive = true;
+  _audioDumpBufferIndex = 0;
+  _audioDumpBuffer = new Int16Array(_audioDumpNumFrames * _frameLength);
 }
 
 function processAudio(inputFrame: Int16Array): void {
@@ -77,7 +86,34 @@ function processAudio(inputFrame: Int16Array): void {
       outputIndex++;
     }
 
-    postMessage(outputFrame, undefined);
+    if (_audioDumpActive) {
+      _audioDumpBuffer.set(outputFrame, _audioDumpBufferIndex * _frameLength);
+      _audioDumpBufferIndex++;
+
+      if (_audioDumpBufferIndex === _audioDumpNumFrames) {
+        _audioDumpActive = false;
+        // Done collecting frames, create a Blob and send it to main thread
+        const pcmBlob = new Blob([_audioDumpBuffer], {
+          type: 'application/octet-stream',
+        });
+
+        postMessage(
+          {
+            command: DownsamplingWorkerCommandOutput.AudioDumpComplete,
+            blob: pcmBlob,
+          },
+          undefined,
+        );
+      }
+    }
+
+    postMessage(
+      {
+        command: 'output',
+        outputFrame: outputFrame,
+      },
+      undefined,
+    );
 
     _inputBuffer = _inputBuffer.slice(inputIndex);
   }
@@ -87,7 +123,9 @@ function reset(): void {
   _inputBuffer = [];
 }
 
-onmessage = function (event: MessageEvent<DownsamplingWorkerMessage>): void {
+onmessage = function (
+  event: MessageEvent<DownsamplingWorkerMessageInput>,
+): void {
   switch (event.data.command) {
     case WorkerCommand.Init:
       init(
@@ -101,6 +139,9 @@ onmessage = function (event: MessageEvent<DownsamplingWorkerMessage>): void {
       break;
     case WorkerCommand.Reset:
       reset();
+      break;
+    case DownsamplingWorkerCommandInput.StartAudioDump:
+      startAudioDump(event.data.durationMs);
       break;
     default:
       console.warn(
