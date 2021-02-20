@@ -22,34 +22,37 @@ export type BrowserFeatures = {
 /**
  * Check for browser compatibility with Picovoice: WebAssembly, Web Audio API, etc.
  *
- * @return {object} of keys/values of compatibilty details, with special key '_picovoice' offering a yes/no answer.
+ * @return {BrowserFeatures} - object with compatibilty details, with special key '_picovoice' offering a yes/no answer.
  */
 export function browserCompatibilityCheck(): BrowserFeatures {
-  const compatibility = {};
-
   // Are we in a secure context? Microphone access requires HTTPS (with the exception of localhost, for development)
-  compatibility['isSecureContext'] = window.isSecureContext;
+  const _isSecureContext = window.isSecureContext;
 
   // Web Audio API
-  compatibility['mediaDevices'] = navigator.mediaDevices !== undefined;
-  compatibility['webkitGetUserMedia'] =
+  const _mediaDevices = navigator.mediaDevices !== undefined;
+  const _webkitGetUserMedia =
     // @ts-ignore
     navigator.webkitGetUserMedia !== undefined;
 
   // Web Workers
-  compatibility['Worker'] = window.Worker !== undefined;
+  const _Worker = window.Worker !== undefined;
 
   // WebAssembly
-  compatibility['WebAssembly'] = typeof WebAssembly === 'object';
+  const _WebAssembly = typeof WebAssembly === 'object';
 
   // AudioWorklet (not yet used, due to lack of Safari support)
-  compatibility['AudioWorklet'] = typeof AudioWorklet === 'function';
+  const _AudioWorklet = typeof AudioWorklet === 'function';
 
   // Picovoice requirements met?
-  compatibility['_picovoice'] =
-    compatibility['mediaDevices'] &&
-    compatibility['WebAssembly'] &&
-    compatibility['Worker'];
+  const _picovoice = _mediaDevices && _WebAssembly && _Worker;
 
-  return compatibility as BrowserFeatures;
+  return {
+    _picovoice: _picovoice,
+    AudioWorklet: _AudioWorklet,
+    isSecureContext: _isSecureContext,
+    mediaDevices: _mediaDevices,
+    WebAssembly: _WebAssembly,
+    webKitGetUserMedia: _webkitGetUserMedia,
+    Worker: _Worker,
+  };
 }
