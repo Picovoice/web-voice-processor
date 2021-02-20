@@ -30,6 +30,10 @@
 
         vuWorkerEngine.onmessage = function (message) {
           var pct = message.data;
+
+          const MIN_DB = -60
+          pct = (Math.max(pct, MIN_DB) * 100 / (-MIN_DB))  + 100;
+
           var cssPercentage = pct + '%';
           vuBar.style.width = cssPercentage;
         };
