@@ -1,0 +1,23 @@
+{
+  "name": "web-voice-processor-demo",
+  "version": "2.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "yarn run serve"
+  },
+  "keywords": [
+    "pcm",
+    "downsampling",
+    "microphone",
+    "web audio api",
+    "speech recognition",
+    "voice ai"
+  ],
+  "author": "Picovoice Inc",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "serve": "^11.3.2",
+    "@picovoice/web-voice-processor": "file:.."
+  }
+}

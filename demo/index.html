@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <style type="text/css">
+      #vu-meter {
+        width: 25rem;
+        height: 1rem;
+        background-color: white;
+        color: white;
+        border: 1px solid black;
+        margin-bottom: 2rem;
+      }
+
+      #audio-rms-level {
+        transition: all 0.05s;
+        width: 2rem;
+        background-color: #377dff;
+        height: 1rem;
+      }
+    </style>
+    <!-- IIFE -->
+    <script src="node_modules/@picovoice/web-voice-processor/dist/iife/index.js"></script>
+    <script type="application/javascript">
+      var handle;
+
+      document.addEventListener('DOMContentLoaded', function () {
+        console.log('DOMContentLoaded');
+        var vuWorkerEngine = new Worker('./vu_worker_engine.js');
+        var vuBar = document.getElementById('audio-rms-level');
+
+        vuWorkerEngine.onmessage = function (message) {
+          var pct = message.data;
+
+          const MIN_DB = -60;
+          pct = (Math.max(pct, MIN_DB) * 100) / -MIN_DB + 100;
+
+          var cssPercentage = pct + '%';
+          vuBar.style.width = cssPercentage;
+        };
+
+        function writeMessage(message) {
+          console.log(message);
+          var p = document.createElement('p');
+          var text = document.createTextNode(message);
+          p.appendChild(text);
+          document.body.appendChild(p);
+        }
+
+        writeMessage(
+          'WebVoiceProcessor is initializing & awaiting the result of microphone permissions ...',
+        );
+
+        window.WebVoiceProcessor.init({ engines: [vuWorkerEngine] })
+          .then(webvp => {
+            handle = webvp;
+            document.getElementById('start-audio-dump').disabled = false;
+            writeMessage('WebVoiceProcessor ready.');
+          })
+          .catch(error => {
+            writeMessage('Error initializing WebVoiceProcessor: ' + error);
+          });
+
+        document.getElementById('start-audio-dump').onclick = () => {
+          writeMessage('Starting Audio dump ...');
+          var blobPromise = handle.audioDump(3000);
+          document.getElementById('start-audio-dump').disabled = true;
+          var downloadLink = document.getElementById('audio-download-link');
+          downloadLink.style.visibility = 'hidden';
+
+          blobPromise.then(blob => {
+            var blobUrl = window.URL.createObjectURL(blob);
+            downloadLink.href = blobUrl;
+            writeMessage(
+              'Audio dump complete. Click to download the PCM binary data.',
+            );
+            document.getElementById('start-audio-dump').disabled = false;
+
+            downloadLink.style.visibility = 'visible';
+          });
+        };
+      });
+    </script>
+  </head>
+  <body>
+    <h1>WebVoiceProcessor demo: RMS audio VU meter</h1>
+    <div id="vu-meter">
+      <div id="audio-rms-level">&nbsp;</div>
+    </div>
+    <button id="start-audio-dump" disabled>Start Audio Dump (3s)</button>
+    <a href="#" style="visibility: hidden" download id="audio-download-link"
+      >Download raw PCM</a
+    >
+  </body>
+</html>
