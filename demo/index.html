@@ -31,8 +31,8 @@
         vuWorkerEngine.onmessage = function (message) {
           var pct = message.data;
 
-          const MIN_DB = -60
-          pct = (Math.max(pct, MIN_DB) * 100 / (-MIN_DB))  + 100;
+          const MIN_DB = -60;
+          pct = (Math.max(pct, MIN_DB) * 100) / -MIN_DB + 100;
 
           var cssPercentage = pct + '%';
           vuBar.style.width = cssPercentage;
@@ -50,7 +50,7 @@
           'WebVoiceProcessor is initializing & awaiting the result of microphone permissions ...',
         );
 
-        window.WebVoiceProcessor.initWithWorkerEngines([vuWorkerEngine])
+        window.WebVoiceProcessor.init({ engines: [vuWorkerEngine] })
           .then(webvp => {
             handle = webvp;
             document.getElementById('start-audio-dump').disabled = false;

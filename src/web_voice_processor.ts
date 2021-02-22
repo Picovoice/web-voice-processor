@@ -17,6 +17,11 @@ import {
 import DownsamplingWorker from 'web-worker:./downsampling_worker.ts';
 import { browserCompatibilityCheck as check, BrowserFeatures } from './utils';
 
+export type WebVoiceProcessorOptions = {
+  start: boolean;
+  engines: Array<Worker>;
+};
+
 /**
  * Obtain microphone permission and audio stream;
  * Downsample audio into 16kHz single-channel PCM for speech recognition.
@@ -40,13 +45,12 @@ export default class WebVoiceProcessor {
    * Acquires the microphone audio stream (incl. asking permission),
    * and continuously forwards the downsampled audio to speech recognition worker engines.
    *
-   * @param {Array<Worker>} engines - Web workers that perform speech recognition (e.g. Porcupine, Rhino)
-   * @param {boolean} start - Immediately start listening after initialization is complete
+   * @param {WebVoiceProcessorOptions} options - Startup options including whether to immediately begin
+   * processing, and the set of voice processing engines
    * @return {Promise<WebVoiceProcessor>} - the promise from mediaDevices.getUserMedia()
    */
-  public static async initWithWorkerEngines(
-    engines: Array<Worker>,
-    start: boolean = true,
+  public static async init(
+    options: WebVoiceProcessorOptions,
   ): Promise<WebVoiceProcessor> {
     // Get microphone access and ask user permission
     const microphoneStream: MediaStream = await navigator.mediaDevices.getUserMedia(
@@ -55,16 +59,19 @@ export default class WebVoiceProcessor {
       },
     );
 
-    return new WebVoiceProcessor(microphoneStream, engines, start);
+    return new WebVoiceProcessor(microphoneStream, options);
   }
 
   constructor(
-    microphoneStream: MediaStream,
-    engines: Array<Worker>,
-    start: boolean,
+    inputMediaStream: MediaStream,
+    options: WebVoiceProcessorOptions,
   ) {
-    this._engines = engines;
-    this._isRecording = start;
+    if (options.engines === undefined) {
+      this._engines = [];
+    } else {
+      this._engines = options.engines;
+    }
+    this._isRecording = options.start ?? true;
 
     this._downsamplingWorker = new DownsamplingWorker();
 
@@ -72,7 +79,7 @@ export default class WebVoiceProcessor {
       // @ts-ignore window.webkitAudioContext
       window.webkitAudioContext)();
     const audioSource = this._audioContext.createMediaStreamSource(
-      microphoneStream,
+      inputMediaStream,
     );
     const node = this._audioContext.createScriptProcessor(4096, 1, 1);
     node.onaudioprocess = function (event: AudioProcessingEvent): void {
