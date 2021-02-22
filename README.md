@@ -81,13 +81,14 @@ The IIFE version of the library adds `WebVoiceProcessor` to the `window` global 
 
 ### Start listening
 
-Start up the WebVoiceProcessor with the `initWithWorkerEngines` async static factory method:
+Start up the WebVoiceProcessor with the `init` async static factory method:
 
 ```javascript
-let handle = await WebVoiceProcessor.initWithWorkerEngines(engines);
+let engines = []; // list of voice processing web workers (see below)
+let handle = await WebVoiceProcessor.init({ engines: engines });
 ```
 
-This is async due to its [Web Audio API microphone request](https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia). The promise will be rejected if the user refuses permission, no suitable devices are found, etc. Your calling code should anticipate the possibility of rejection. When the promsie resolves, the WebVoiceProcessor instance is ready.
+This is async due to its [Web Audio API microphone request](https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia). The promise will be rejected if the user refuses permission, no suitable devices are found, etc. Your calling code should anticipate the possibility of rejection. When the promise resolves, the WebVoiceProcessor instance is ready.
 
 `engines` is an array of voice processing [Web Workers](<(https://developer.mozilla.org/en-US/docs/Web/API/Worker)>)
 implementing the following interface within their `onmessage` method:
@@ -110,10 +111,10 @@ onmessage = function (e) {
 
 where `e.data.inputFrame` is an `Int16Array` of 512 audio samples.
 
-If you wish to initialize a new WebVoiceProcessor, and not immediately start listening, pass `start=false`; then call `start()` on the instance when ready.
+If you wish to initialize a new WebVoiceProcessor, and not immediately start listening, include `start: false` in the init options object argument; then call `start()` on the instance when ready.
 
 ```javascript
-var handle = await WebVoiceProcessor.initWithWorkerEngines(engines, false);
+var handle = await WebVoiceProcessor.init({ engines: engines, start: false });
 handle.start();
 ```
 

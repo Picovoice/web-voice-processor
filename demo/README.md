@@ -1,6 +1,6 @@
 # WebVoiceProcessor - Demo
 
-This is a basic demo to show how to use WebVoiceProcessor. It passes in a worker that returns the volume level of the downsampled signal. It also allows you to dump raw PCM data that has passed through the downsampler Y
+This is a basic demo to show how to use WebVoiceProcessor. It passes in a worker that returns the volume level of the downsampled signal. It also allows you to dump raw PCM data that has passed through the downsampler.
 
 ## Install / run
 
