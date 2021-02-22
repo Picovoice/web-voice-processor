@@ -18,8 +18,8 @@ import DownsamplingWorker from 'web-worker:./downsampling_worker.ts';
 import { browserCompatibilityCheck as check, BrowserFeatures } from './utils';
 
 export type WebVoiceProcessorOptions = {
-  start: boolean;
-  engines: Array<Worker>;
+  engines?: Array<Worker>;
+  start?: boolean;
 };
 
 /**
