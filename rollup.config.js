@@ -52,7 +52,11 @@ export default {
       cacheRoot: path.resolve(__dirname, '.rts2_cache'),
       clean: true,
     }),
-    babel({ extensions: extensions, babelHelpers: 'runtime' }),
+    babel({
+      extensions: extensions,
+      babelHelpers: 'runtime',
+      exclude: '**/node_modules/**',
+    }),
     sourceMaps(),
   ],
 };
