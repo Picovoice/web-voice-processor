@@ -1,6 +1,6 @@
 {
   "name": "@picovoice/web-voice-processor",
-  "version": "2.0.0-alpha.2",
+  "version": "2.0.0",
   "description": "Real-time audio processing for voice, in web browsers",
   "entry": "src/index.ts",
   "module": "dist/esm/index.js",
@@ -25,8 +25,10 @@
     "real-time",
     "voice processing",
     "audio processing",
+    "speech recognition",
     "browser",
     "web browser",
+    "private",
     "web audio api",
     "microphone",
     "downsampling"

@@ -50,7 +50,7 @@
           'WebVoiceProcessor is initializing & awaiting the result of microphone permissions ...',
         );
 
-        window.WebVoiceProcessor.init({ engines: [vuWorkerEngine] })
+        window.WebVoiceProcessor.WebVoiceProcessor.init({ engines: [vuWorkerEngine] })
           .then(webvp => {
             handle = webvp;
             document.getElementById('start-audio-dump').disabled = false;

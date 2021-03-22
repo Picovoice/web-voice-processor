@@ -9,35 +9,47 @@
     specific language governing permissions and limitations under the License.
 */
 
-export enum WorkerCommand {
-  Process = 'process',
-  Init = 'init',
-  Reset = 'reset',
-  Pause = 'pause',
-  Resume = 'resume',
-  Release = 'release',
-}
+export type WorkerRequestVoid = {
+  command: 'reset' | 'pause' | 'resume' | 'release';
+};
 
-export type DownsamplingWorkerMessageInput = {
-  command: WorkerCommand | DownsamplingWorkerCommandInput;
-  frameLength?: number;
-  inputFrame?: Int16Array;
-  inputSampleRate?: number;
+export type DownsamplingWorkerRequestProcess = {
+  command: 'process';
+  inputFrame: Float32Array;
+};
+
+export type DownsamplingWorkerRequestInit = {
+  command: 'init';
+  inputSampleRate: number;
   outputSampleRate?: number;
+  frameLength?: number;
+};
+
+export type DownsamplingWorkerResponseFrame = {
+  command: 'output';
+  outputFrame: Int16Array;
+};
+
+export type DownsamplingWorkerRequestAudioDump = {
+  command: 'start_audio_dump';
   durationMs?: number;
 };
 
-export type DownsamplingWorkerMessageOutput = {
-  command: WorkerCommand | DownsamplingWorkerMessageOutput;
-  outputFrame?: Int16Array;
-  blob?: Blob;
+export type DownsamplingWorkerResponseAudioDumpComplete = {
+  command: 'audio_dump_complete';
+  blob: Blob;
 };
 
-export enum DownsamplingWorkerCommandInput {
-  StartAudioDump = 'start_audio_dump',
-}
+export type DownsamplingWorkerRequest =
+  | DownsamplingWorkerRequestInit
+  | DownsamplingWorkerRequestAudioDump
+  | DownsamplingWorkerRequestProcess
+  | WorkerRequestVoid;
 
-export enum DownsamplingWorkerCommandOutput {
-  AudioDumpComplete = 'audio_dump_complete',
-  Blob = 'blob',
+export type DownsamplingWorkerResponse =
+  | DownsamplingWorkerResponseFrame
+  | DownsamplingWorkerResponseAudioDumpComplete;
+
+export interface DownsamplingWorker extends Omit<Worker, 'postMessage'> {
+  postMessage(command: DownsamplingWorkerRequest): void;
 }

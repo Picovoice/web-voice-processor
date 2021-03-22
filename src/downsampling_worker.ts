@@ -9,12 +9,7 @@
     specific language governing permissions and limitations under the License.
 */
 
-import {
-  WorkerCommand,
-  DownsamplingWorkerCommandInput,
-  DownsamplingWorkerMessageInput,
-  DownsamplingWorkerCommandOutput,
-} from './worker_types';
+import { DownsamplingWorkerRequest } from './worker_types';
 
 const PV_FRAME_LENGTH = 512;
 const PV_SAMPLE_RATE = 16000;
@@ -46,14 +41,14 @@ function init(
   _inputBuffer = [];
 }
 
-function startAudioDump(durationMs: number): void {
+function startAudioDump(durationMs: number = 3000): void {
   _audioDumpNumFrames = durationMs * (PV_FRAME_LENGTH / PV_SAMPLE_RATE);
   _audioDumpActive = true;
   _audioDumpBufferIndex = 0;
   _audioDumpBuffer = new Int16Array(_audioDumpNumFrames * _frameLength);
 }
 
-function processAudio(inputFrame: Int16Array): void {
+function processAudio(inputFrame: Float32Array): void {
   for (let i = 0; i < inputFrame.length; i++) {
     _inputBuffer.push(inputFrame[i] * S_INT16_MAX);
   }
@@ -99,10 +94,10 @@ function processAudio(inputFrame: Int16Array): void {
 
         postMessage(
           {
-            command: DownsamplingWorkerCommandOutput.AudioDumpComplete,
+            command: 'audio_dump_complete',
             blob: pcmBlob,
           },
-          undefined,
+          undefined as any,
         );
       }
     }
@@ -112,7 +107,7 @@ function processAudio(inputFrame: Int16Array): void {
         command: 'output',
         outputFrame: outputFrame,
       },
-      undefined,
+      undefined as any,
     );
 
     _inputBuffer = _inputBuffer.slice(inputIndex);
@@ -123,24 +118,22 @@ function reset(): void {
   _inputBuffer = [];
 }
 
-onmessage = function (
-  event: MessageEvent<DownsamplingWorkerMessageInput>,
-): void {
+onmessage = function (event: MessageEvent<DownsamplingWorkerRequest>): void {
   switch (event.data.command) {
-    case WorkerCommand.Init:
+    case 'init':
       init(
         event.data.inputSampleRate,
         event.data.outputSampleRate,
         event.data.frameLength,
       );
       break;
-    case WorkerCommand.Process:
+    case 'process':
       processAudio(event.data.inputFrame);
       break;
-    case WorkerCommand.Reset:
+    case 'reset':
       reset();
       break;
-    case DownsamplingWorkerCommandInput.StartAudioDump:
+    case 'start_audio_dump':
       startAudioDump(event.data.durationMs);
       break;
     default:
