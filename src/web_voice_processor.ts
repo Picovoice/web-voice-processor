@@ -26,6 +26,7 @@ export type WebVoiceProcessorOptions = {
  */
 export class WebVoiceProcessor {
   private _audioContext: AudioContext;
+  private _audioSource: MediaStreamAudioSourceNode;
   private _downsamplingWorker: DownsamplingWorker;
   private _engines: Array<Worker>;
   private _isRecording: boolean;
@@ -68,7 +69,7 @@ export class WebVoiceProcessor {
     this._audioContext = new (window.AudioContext ||
       // @ts-ignore window.webkitAudioContext
       window.webkitAudioContext)();
-    const audioSource = this._audioContext.createMediaStreamSource(
+    this._audioSource = this._audioContext.createMediaStreamSource(
       inputMediaStream,
     );
     const node = this._audioContext.createScriptProcessor(4096, 1, 1);
@@ -83,12 +84,12 @@ export class WebVoiceProcessor {
       });
     };
 
-    audioSource.connect(node);
+    this._audioSource.connect(node);
     node.connect(this._audioContext.destination);
 
     this._downsamplingWorker.postMessage({
       command: 'init',
-      inputSampleRate: audioSource.context.sampleRate,
+      inputSampleRate: this._audioSource.context.sampleRate,
       outputSampleRate: options.outputSampleRate,
       frameLength: options.frameLength,
     });
@@ -167,6 +168,10 @@ export class WebVoiceProcessor {
 
   get audioContext(): AudioContext {
     return this._audioContext;
+  }
+
+  get audioSource(): MediaStreamAudioSourceNode {
+    return this._audioSource;
   }
 
   get isRecording(): boolean {

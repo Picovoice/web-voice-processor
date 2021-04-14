@@ -9,7 +9,7 @@
     "moduleResolution": "node",
     "noEmit": false,
     "outDir": "./dist",
-    "removeComments": false,
+    "removeComments": true,
     "resolveJsonModule": true,
     "sourceMap": true,
     "strict": true,
