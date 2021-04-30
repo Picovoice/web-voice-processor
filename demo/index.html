@@ -55,6 +55,7 @@
             handle = webvp;
             document.getElementById('start-audio-dump').disabled = false;
             writeMessage('WebVoiceProcessor ready.');
+            window.demoWebVp = webvp
           })
           .catch(error => {
             writeMessage('Error initializing WebVoiceProcessor: ' + error);

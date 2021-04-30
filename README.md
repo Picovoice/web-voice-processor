@@ -29,13 +29,13 @@ All modern browsers (Chrome/Edge/Opera, Firefox, Safari) are supported, includin
 
 Using the Web Audio API requires a secure context (HTTPS connection), with the exception of `localhost`, for local development.
 
-This library includes the utility function `browserCompatibilityCheck` which can be used to perform feature detection on the current browser and return an object 
+This library includes the utility function `browserCompatibilityCheck` which can be used to perform feature detection on the current browser and return an object
 indicating browser capabilities.
 
 ESM:
 
 ```javascript
-import { browserCompatibilityCheck } from "@picovoice/web-voice-processor"
+import { browserCompatibilityCheck } from '@picovoice/web-voice-processor';
 browserCompatibilityCheck();
 ```
 
@@ -61,13 +61,13 @@ This library does _not_ use the modern [AudioWorklet](https://developer.mozilla.
 
 ## Installation
 
-```bash
+```console
 npm install @picovoice/web-voice-processor
 ```
 
 (or)
 
-```bash
+```console
 yarn add @picovoice/web-voice-processor
 ```
 
@@ -95,7 +95,9 @@ Start up the WebVoiceProcessor with the `init` async static factory method:
 
 ```javascript
 let engines = []; // list of voice processing web workers (see below)
-let handle = await WebVoiceProcessor.WebVoiceProcessor.init({ engines: engines });
+let handle = await WebVoiceProcessor.WebVoiceProcessor.init({
+  engines: engines,
+});
 ```
 
 This is async due to its [Web Audio API microphone request](https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia). The promise will be rejected if the user refuses permission, no suitable devices are found, etc. Your calling code should anticipate the possibility of rejection. When the promise resolves, the WebVoiceProcessor instance is ready.
@@ -124,7 +126,10 @@ where `e.data.inputFrame` is an `Int16Array` of 512 audio samples.
 If you wish to initialize a new WebVoiceProcessor, and not immediately start listening, include `start: false` in the init options object argument; then call `start()` on the instance when ready.
 
 ```javascript
-var handle = await WebVoiceProcessor.WebVoiceProcessor.init({ engines: engines, start: false });
+const handle = await WebVoiceProcessor.WebVoiceProcessor.init({
+  engines: engines,
+  start: false,
+});
 handle.start();
 ```
 
@@ -149,14 +154,14 @@ This method is async as it is closing the [AudioContext](https://developer.mozil
 
 Use `yarn` or `npm` to build WebVoiceProcessor:
 
-```
+```console
 yarn
 yarn build
 ```
 
 (or)
 
-```
+```console
 npm install
 npm run-script build
 ```

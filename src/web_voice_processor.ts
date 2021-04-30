@@ -13,9 +13,13 @@ import { DownsamplingWorker, DownsamplingWorkerResponse } from './worker_types';
 import DsWorker from 'web-worker:./downsampling_worker.ts';
 
 export type WebVoiceProcessorOptions = {
+  /** Engines to feed downsampled audio to */
   engines?: Array<Worker>;
+  /** Immediately start the microphone? */
   start?: boolean;
+  /** Size of pcm frames (default: 512) */
   frameLength?: number;
+  /** Which sample rate to convert to (default: 16000) */
   outputSampleRate?: number;
 };
 
@@ -27,9 +31,11 @@ export type WebVoiceProcessorOptions = {
 export class WebVoiceProcessor {
   private _audioContext: AudioContext;
   private _audioSource: MediaStreamAudioSourceNode;
+  private _mediaStream: MediaStream;
   private _downsamplingWorker: DownsamplingWorker;
   private _engines: Array<Worker>;
   private _isRecording: boolean;
+  private _isReleased = false;
   private _audioDumpPromise: Promise<Blob> | null = null;
   private _audioDumpResolve: any = null;
   private _audioDumpReject: any = null;
@@ -57,6 +63,8 @@ export class WebVoiceProcessor {
     inputMediaStream: MediaStream,
     options: WebVoiceProcessorOptions,
   ) {
+    this._mediaStream = inputMediaStream;
+
     if (options.engines === undefined) {
       this._engines = [];
     } else {
@@ -70,7 +78,7 @@ export class WebVoiceProcessor {
       // @ts-ignore window.webkitAudioContext
       window.webkitAudioContext)();
     this._audioSource = this._audioContext.createMediaStreamSource(
-      inputMediaStream,
+      this._mediaStream,
     );
     const node = this._audioContext.createScriptProcessor(4096, 1, 1);
     node.onaudioprocess = (event: AudioProcessingEvent): void => {
@@ -119,7 +127,7 @@ export class WebVoiceProcessor {
   }
 
   /**
-   * Record some sample raw signed 16-bit PCM data for some duration, then pack it as a Blob
+   * Record some sample raw signed 16-bit PCM data for some duration, then pack it as a Blob.
    *
    * @param durationMs the duration of the recording, in milliseconds
    * @return the data in Blob format, wrapped in a promise
@@ -148,10 +156,18 @@ export class WebVoiceProcessor {
    * @return the promise from AudioContext.close()
    */
   public async release(): Promise<void> {
-    this._isRecording = false;
-    this._downsamplingWorker.postMessage({ command: 'reset' });
-    this._downsamplingWorker.terminate();
-    await this._audioContext.close();
+    if (!this._isReleased) {
+      this._isReleased = true;
+      this._isRecording = false;
+      this._downsamplingWorker.postMessage({ command: 'reset' });
+      this._downsamplingWorker.terminate();
+
+      for (const track of this._mediaStream.getTracks()) {
+        track.stop();
+      }
+
+      await this._audioContext.close();
+    }
   }
 
   public start(): void {
@@ -174,7 +190,15 @@ export class WebVoiceProcessor {
     return this._audioSource;
   }
 
+  get mediaStream(): MediaStream {
+    return this._mediaStream;
+  }
+
   get isRecording(): boolean {
     return this._isRecording;
+  }
+
+  get isReleased(): boolean {
+    return this._isReleased;
   }
 }
