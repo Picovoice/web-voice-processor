@@ -53,3 +53,12 @@ export type DownsamplingWorkerResponse =
 export interface DownsamplingWorker extends Omit<Worker, 'postMessage'> {
   postMessage(command: DownsamplingWorkerRequest): void;
 }
+
+export type DownsamplingWorkerWasm = {
+  exports: WebAssembly.Exports,
+  memory: WebAssembly.Memory,
+  objectAddress: number,
+  inputBufferAddress: number,
+  outputBufferAddress: number,
+  inputframeLength: number
+}
