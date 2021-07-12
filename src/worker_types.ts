@@ -74,7 +74,7 @@ export type DownsamplerWasmOutput = {
 
 export interface DownsamplerInterface {
   delete(): void;
-  getReqiuredInputNumSamples(numSample: number): number;
+  getrequiredNumInputSamples(numSample: number): number;
   process(inputBuffer: Int16Array, inputBufferSize: number, outputBuffer: Int16Array): number;
   reset(): void;
 }

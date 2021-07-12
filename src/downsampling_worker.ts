@@ -198,7 +198,7 @@ class Downsampler implements DownsamplerInterface {
     );
     for (let i = 0; i < processedSamples; i++) {
       outputBuffer[i] = this._memoryBufferView.getInt16(
-        this._outputBufferAddress + i * Int16Array.BYTES_PER_ELEMENT,
+        this._outputBufferAddress + (i * Int16Array.BYTES_PER_ELEMENT),
         true,
       );
     }
@@ -213,7 +213,7 @@ class Downsampler implements DownsamplerInterface {
     this._pvDownsamplerDelete(this._objectAddress);
   }
 
-  public getReqiuredInputNumSamples(numSample: number): number {
+  public getrequiredNumInputSamples(numSample: number): number {
     return this._pvDownsamplerConvertNumSamplesToInputSampleRate(
       this._objectAddress,
       numSample,
@@ -295,23 +295,29 @@ function processAudio(inputFrame: Float32Array): void {
   }
 
   while (_inputBuffer.length > 0) {
-    const numSampleAtInputSampleRate =
-      _downsampler.getReqiuredInputNumSamples(_outputframeLength);
-    const NumSampleToRead = Math.min(
-      numSampleAtInputSampleRate,
+    const NumInputSamples =
+      _downsampler.getrequiredNumInputSamples(_outputframeLength);
+    const NumInputSamplesToRead = Math.min(
+      NumInputSamples,
       _inputBuffer.length,
     );
     _outputBuffer = new Int16Array(_outputframeLength);
     const processedSamples = _downsampler.process(
-      _inputBuffer.slice(0, NumSampleToRead),
-      NumSampleToRead,
+      _inputBuffer.slice(0, NumInputSamplesToRead),
+      NumInputSamplesToRead,
       _outputBuffer,
     );
 
     if (_audioDumpActive) {
-      const NumSampleToCopy = Math.min(processedSamples, _audioDumpNumSamples - _audioDumpBufferIndex);
-      _audioDumpBuffer.set(_outputBuffer.slice(0, NumSampleToCopy), _audioDumpBufferIndex);
-      _audioDumpBufferIndex += NumSampleToCopy;
+      const NumSamplesToCopy = Math.min(
+        processedSamples,
+        _audioDumpNumSamples - _audioDumpBufferIndex,
+      );
+      _audioDumpBuffer.set(
+        _outputBuffer.slice(0, NumSamplesToCopy),
+        _audioDumpBufferIndex,
+      );
+      _audioDumpBufferIndex += NumSamplesToCopy;
 
       if (_audioDumpBufferIndex === _audioDumpNumSamples) {
         _audioDumpActive = false;
@@ -338,7 +344,7 @@ function processAudio(inputFrame: Float32Array): void {
       undefined as any,
     );
     _outputBuffer = new Int16Array(_outputframeLength);
-    _inputBuffer = _inputBuffer.slice(NumSampleToRead);
+    _inputBuffer = _inputBuffer.slice(NumInputSamplesToRead);
   }
 }
 
