@@ -267,16 +267,24 @@ async function init(
     PV_FILTER_ORDER,
     _outputframeLength,
   );
+
+  postMessage(
+    {
+      command: 'ds-ready',
+    },
+    undefined as any,
+  );
 }
 
 function startAudioDump(durationMs: number = 3000): void {
-  _audioDumpNumSamples = ((durationMs * PV_SAMPLE_RATE) / PV_FRAME_LENGTH) / 1000;
+  _audioDumpNumSamples = (durationMs * PV_SAMPLE_RATE) / 1000;
   _audioDumpActive = true;
   _audioDumpBufferIndex = 0;
   _audioDumpBuffer = new Int16Array(_audioDumpNumSamples);
 }
 
 function processAudio(inputFrame: Float32Array): void {
+  console.assert(inputFrame.constructor === Float32Array);
   _inputBuffer = new Int16Array(inputFrame.length);
   for (let i = 0; i < inputFrame.length; i++) {
     if (inputFrame[i] < 0) {

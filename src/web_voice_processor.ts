@@ -59,7 +59,7 @@ export class WebVoiceProcessor {
     return new WebVoiceProcessor(microphoneStream, options);
   }
 
-  constructor(
+  private constructor(
     inputMediaStream: MediaStream,
     options: WebVoiceProcessorOptions,
   ) {
@@ -100,6 +100,16 @@ export class WebVoiceProcessor {
       inputSampleRate: this._audioSource.context.sampleRate,
       outputSampleRate: options.outputSampleRate,
       frameLength: options.frameLength,
+    });
+
+    const workerPromise = new Promise<Worker>((resolve, reject) => {
+      this._downsamplingWorker.onmessage = function (
+        event: MessageEvent<DownsamplingWorkerResponse>,
+      ): void {
+        if (event.data.command === 'ds-ready') {
+          resolve(workerPromise);
+        }
+      };
     });
 
     this._downsamplingWorker.onmessage = (

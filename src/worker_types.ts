@@ -25,6 +25,10 @@ export type DownsamplingWorkerRequestInit = {
   frameLength?: number;
 };
 
+export type DownsamplingWorkerResponseReady = {
+  command: 'ds-ready';
+};
+
 export type DownsamplingWorkerResponseFrame = {
   command: 'output';
   outputFrame: Int16Array;
@@ -48,6 +52,7 @@ export type DownsamplingWorkerRequest =
 
 export type DownsamplingWorkerResponse =
   | DownsamplingWorkerResponseFrame
+  | DownsamplingWorkerResponseReady
   | DownsamplingWorkerResponseAudioDumpComplete;
 
 export interface DownsamplingWorker extends Omit<Worker, 'postMessage'> {
