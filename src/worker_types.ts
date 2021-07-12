@@ -54,11 +54,22 @@ export interface DownsamplingWorker extends Omit<Worker, 'postMessage'> {
   postMessage(command: DownsamplingWorkerRequest): void;
 }
 
-export type DownsamplingWorkerWasm = {
-  exports: WebAssembly.Exports,
+export type DownsamplerWasmOutput = {
+  inputBufferAddress: number,
+  inputframeLength: number,
   memory: WebAssembly.Memory,
   objectAddress: number,
-  inputBufferAddress: number,
   outputBufferAddress: number,
-  inputframeLength: number
+  pvDownsamplerConvertNumSamplesToInputSampleRate: CallableFunction,
+  pvDownsamplerInit: CallableFunction,
+  pvDownsamplerProcess: CallableFunction,
+  pvDownsamplerReset: CallableFunction,
+  pvDownsamplerDelete: CallableFunction,
+}
+
+export interface DownsamplerInterface {
+  delete(): void;
+  getReqiuredInputNumSamples(numSample: number): number;
+  process(inputBuffer: Int16Array, inputBufferSize: number, outputBuffer: Int16Array): number;
+  reset(): void;
 }
