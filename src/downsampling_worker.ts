@@ -104,11 +104,7 @@ class Downsampler implements DownsamplerInterface {
       },
     };
 
-    const wasmBase64 = atob(WASM_BASE64);
-    const wasmCodeArray = new Uint8Array(wasmBase64.length);
-    for (let i = 0; i < wasmBase64.length; i++) {
-      wasmCodeArray[i] = wasmBase64.charCodeAt(i);
-    }
+    const wasmCodeArray = Downsampler.base64ToUint8Array(WASM_BASE64);
     const { instance } = await WebAssembly.instantiate(
       wasmCodeArray,
       importObject,
@@ -233,6 +229,15 @@ class Downsampler implements DownsamplerInterface {
       stringBuffer += String.fromCharCode(arrayBuffer[indexBuffer++]);
     }
     return stringBuffer;
+  }
+
+  private static base64ToUint8Array(base64String: string): Uint8Array {
+    const base64StringDecoded = atob(base64String);
+    const binaryArray = new Uint8Array(base64StringDecoded.length);
+    for (let i = 0; i < base64StringDecoded.length; i++) {
+      binaryArray[i] = base64StringDecoded.charCodeAt(i);
+    }
+    return binaryArray;
   }
 }
 
