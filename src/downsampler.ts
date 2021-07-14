@@ -1,6 +1,7 @@
 import { DownsamplerInterface } from './worker_types';
-import { wasiSnapshotPreview1Emulator } from './wasi_snapshot';
 import { WASM_BASE64 } from './downsampler_b64';
+import { arrayBufferToStringAtIndex, base64ToUint8Array} from './utils';
+import { wasiSnapshotPreview1Emulator } from './wasi_snapshot';
 
 type DownsamplerWasmOutput = {
   inputBufferAddress: number;
@@ -72,7 +73,7 @@ class Downsampler implements DownsamplerInterface {
     const pvConsoleLogWasm = function (index: number): void {
       const memoryBufferUint8 = new Uint8Array(memory.buffer);
       console.log(
-        Downsampler.arrayBufferToStringAtIndex(memoryBufferUint8, index),
+        arrayBufferToStringAtIndex(memoryBufferUint8, index),
       );
     };
     const pvAssertWasm = function (
@@ -82,7 +83,7 @@ class Downsampler implements DownsamplerInterface {
     ): void {
       if (expr === 0) {
         const memoryBufferUint8 = new Uint8Array(memory.buffer);
-        const fileName = Downsampler.arrayBufferToStringAtIndex(
+        const fileName = arrayBufferToStringAtIndex(
           memoryBufferUint8,
           fileNameAddress,
         );
@@ -102,7 +103,7 @@ class Downsampler implements DownsamplerInterface {
       },
     };
 
-    const wasmCodeArray = Downsampler.base64ToUint8Array(WASM_BASE64);
+    const wasmCodeArray = base64ToUint8Array(WASM_BASE64);
     const { instance } = await WebAssembly.instantiate(
       wasmCodeArray,
       importObject,
@@ -212,27 +213,6 @@ class Downsampler implements DownsamplerInterface {
       this._objectAddress,
       numSample,
     );
-  }
-
-  private static arrayBufferToStringAtIndex(
-    arrayBuffer: Uint8Array,
-    index: number,
-  ): string {
-    let stringBuffer = '';
-    let indexBuffer = index;
-    while (arrayBuffer[indexBuffer] === 0) {
-      stringBuffer += String.fromCharCode(arrayBuffer[indexBuffer++]);
-    }
-    return stringBuffer;
-  }
-
-  private static base64ToUint8Array(base64String: string): Uint8Array {
-    const base64StringDecoded = atob(base64String);
-    const binaryArray = new Uint8Array(base64StringDecoded.length);
-    for (let i = 0; i < base64StringDecoded.length; i++) {
-      binaryArray[i] = base64StringDecoded.charCodeAt(i);
-    }
-    return binaryArray;
   }
 }
 

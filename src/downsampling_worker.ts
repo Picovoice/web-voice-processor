@@ -32,9 +32,15 @@ async function init(
   outputSampleRate: number = PV_SAMPLE_RATE,
   frameLength: number = PV_FRAME_LENGTH,
 ): Promise<void> {
-  console.assert(Number.isInteger(inputSampleRate));
-  console.assert(Number.isInteger(outputSampleRate));
-  console.assert(Number.isInteger(frameLength));
+  if (!Number.isInteger(inputSampleRate)) {
+    throw new Error(`Invalid inputSampleRate value: ${inputSampleRate}. Expected integer.`);
+  }
+  if (!Number.isInteger(outputSampleRate)) {
+    throw new Error(`Invalid outputSampleRate value: ${outputSampleRate}. Expected integer.`);
+  }
+  if (!Number.isInteger(frameLength)) {
+    throw new Error(`Invalid frameLength value: ${frameLength}. Expected integer.`);
+  }
 
   _outputframeLength = frameLength;
 
@@ -62,7 +68,7 @@ function startAudioDump(durationMs: number = 3000): void {
 
 function processAudio(inputFrame: Float32Array): void {
   if (inputFrame.constructor !== Float32Array) {
-    throw new Error(`Invalid input frame type :${inputFrame.constructor}.`);
+    throw new Error(`Invalid inputFrame type: ${typeof inputFrame}. Expected Float32Array.`);
   }
   _inputBuffer = new Int16Array(inputFrame.length);
   for (let i = 0; i < inputFrame.length; i++) {
@@ -88,15 +94,15 @@ function processAudio(inputFrame: Float32Array): void {
     );
 
     if (_audioDumpActive) {
-      const NumSamplesToCopy = Math.min(
+      const numSamplesToCopy = Math.min(
         processedSamples,
         _audioDumpNumSamples - _audioDumpBufferIndex,
       );
       _audioDumpBuffer.set(
-        _outputBuffer.slice(0, NumSamplesToCopy),
+        _outputBuffer.slice(0, numSamplesToCopy),
         _audioDumpBufferIndex,
       );
-      _audioDumpBufferIndex += NumSamplesToCopy;
+      _audioDumpBufferIndex += numSamplesToCopy;
 
       if (_audioDumpBufferIndex === _audioDumpNumSamples) {
         _audioDumpActive = false;
