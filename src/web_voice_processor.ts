@@ -10,7 +10,7 @@
 */
 
 import { DownsamplingWorker, DownsamplingWorkerResponse } from './worker_types';
-import DsWorker from 'web-worker:./downsampling_worker.ts';
+import DownsamplerWorkerFactory from './downsampler_worker_factory';
 
 export type WebVoiceProcessorOptions = {
   /** Engines to feed downsampled audio to */
@@ -62,9 +62,7 @@ export class WebVoiceProcessor {
       window.webkitAudioContext)();
     const audioSource = audioContext.createMediaStreamSource(microphoneStream);
 
-    const downsamplingWorker = new DsWorker() as DownsamplingWorker;
-    await WebVoiceProcessor.initDsWorker(
-      downsamplingWorker,
+    const downsamplingWorker = await DownsamplerWorkerFactory.create(
       audioSource.context.sampleRate,
       options.outputSampleRate,
       options.frameLength,
@@ -79,29 +77,6 @@ export class WebVoiceProcessor {
     );
   }
 
-  private static async initDsWorker(
-    downsamplingWorker: DownsamplingWorker,
-    inputSampleRate: number,
-    outputSampleRate: number | undefined,
-    frameLength: number | undefined,
-  ): Promise<Worker> {
-    downsamplingWorker.postMessage({
-      command: 'init',
-      inputSampleRate: inputSampleRate,
-      outputSampleRate: outputSampleRate,
-      frameLength: frameLength,
-    });
-    const workerPromise = new Promise<Worker>((resolve, reject) => {
-      downsamplingWorker.onmessage = function (
-        event: MessageEvent<DownsamplingWorkerResponse>,
-      ): void {
-        if (event.data.command === 'ds-ready') {
-          resolve(downsamplingWorker);
-        }
-      };
-    });
-    return workerPromise;
-  }
   private constructor(
     inputMediaStream: MediaStream,
     audioContext: AudioContext,
@@ -158,7 +133,7 @@ export class WebVoiceProcessor {
           break;
         }
         default: {
-          console.assert(`unexpected recieved command: ${event.data.command}`);
+          console.warn(`Received unexpected command: ${event.data.command}`);
           break;
         }
       }
