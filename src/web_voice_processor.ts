@@ -10,7 +10,7 @@
 */
 
 import { DownsamplingWorker, DownsamplingWorkerResponse } from './worker_types';
-import DsWorker from 'web-worker:./downsampling_worker.ts';
+import DownsamplerWorkerFactory from './downsampler_worker_factory';
 
 export type WebVoiceProcessorOptions = {
   /** Engines to feed downsampled audio to */
@@ -48,6 +48,7 @@ export class WebVoiceProcessor {
    * processing, and the set of voice processing engines
    * @return the promise from mediaDevices.getUserMedia()
    */
+
   public static async init(
     options: WebVoiceProcessorOptions,
   ): Promise<WebVoiceProcessor> {
@@ -56,11 +57,31 @@ export class WebVoiceProcessor {
       audio: true,
     });
 
-    return new WebVoiceProcessor(microphoneStream, options);
+    const audioContext = new (window.AudioContext ||
+      // @ts-ignore window.webkitAudioContext
+      window.webkitAudioContext)();
+    const audioSource = audioContext.createMediaStreamSource(microphoneStream);
+
+    const downsamplingWorker = await DownsamplerWorkerFactory.create(
+      audioSource.context.sampleRate,
+      options.outputSampleRate,
+      options.frameLength,
+    );
+
+    return new WebVoiceProcessor(
+      microphoneStream,
+      audioContext,
+      audioSource,
+      downsamplingWorker,
+      options,
+    );
   }
 
-  constructor(
+  private constructor(
     inputMediaStream: MediaStream,
+    audioContext: AudioContext,
+    audioSource: MediaStreamAudioSourceNode,
+    downsamplingWorker: DownsamplingWorker,
     options: WebVoiceProcessorOptions,
   ) {
     this._mediaStream = inputMediaStream;
@@ -72,21 +93,17 @@ export class WebVoiceProcessor {
     }
     this._isRecording = options.start ?? true;
 
-    this._downsamplingWorker = new DsWorker() as DownsamplingWorker;
+    this._downsamplingWorker = downsamplingWorker;
+    this._audioContext = audioContext;
+    this._audioSource = audioSource;
 
-    this._audioContext = new (window.AudioContext ||
-      // @ts-ignore window.webkitAudioContext
-      window.webkitAudioContext)();
-    this._audioSource = this._audioContext.createMediaStreamSource(
-      this._mediaStream,
-    );
-    const node = this._audioContext.createScriptProcessor(4096, 1, 1);
+    const node = audioContext.createScriptProcessor(4096, 1, 1);
     node.onaudioprocess = (event: AudioProcessingEvent): void => {
       if (!this._isRecording) {
         return;
       }
 
-      this._downsamplingWorker.postMessage({
+      downsamplingWorker.postMessage({
         command: 'process',
         inputFrame: event.inputBuffer.getChannelData(0),
       });
@@ -95,14 +112,7 @@ export class WebVoiceProcessor {
     this._audioSource.connect(node);
     node.connect(this._audioContext.destination);
 
-    this._downsamplingWorker.postMessage({
-      command: 'init',
-      inputSampleRate: this._audioSource.context.sampleRate,
-      outputSampleRate: options.outputSampleRate,
-      frameLength: options.frameLength,
-    });
-
-    this._downsamplingWorker.onmessage = (
+    downsamplingWorker.onmessage = (
       event: MessageEvent<DownsamplingWorkerResponse>,
     ): void => {
       switch (event.data.command) {
@@ -122,6 +132,10 @@ export class WebVoiceProcessor {
           this._audioDumpReject = null;
           break;
         }
+        default: {
+          console.warn(`Received unexpected command: ${event.data.command}`);
+          break;
+        }
       }
     };
   }
@@ -132,6 +146,7 @@ export class WebVoiceProcessor {
    * @param durationMs the duration of the recording, in milliseconds
    * @return the data in Blob format, wrapped in a promise
    */
+
   public async audioDump(durationMs: number = 3000): Promise<Blob> {
     if (this._audioDumpPromise !== null) {
       return Promise.reject('Audio dump already in progress');
@@ -155,6 +170,7 @@ export class WebVoiceProcessor {
    *
    * @return the promise from AudioContext.close()
    */
+
   public async release(): Promise<void> {
     if (!this._isReleased) {
       this._isReleased = true;
