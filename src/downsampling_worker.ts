@@ -67,7 +67,7 @@ async function init(
 
 function startAudioDump(durationMs: number = 3000): void {
   _audioDumpNumFrames = Math.floor(
-    (10 * durationMs * PV_SAMPLE_RATE) / 1000 / PV_FRAME_LENGTH,
+    (durationMs * PV_SAMPLE_RATE) / 1000 / PV_FRAME_LENGTH,
   );
   _audioDumpActive = true;
   _audioDumpBufferIndex = 0;
