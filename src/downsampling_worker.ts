@@ -11,111 +11,146 @@
 
 import { DownsamplingWorkerRequest } from './worker_types';
 
+import Downsampler from './downsampler';
+
 const PV_FRAME_LENGTH = 512;
 const PV_SAMPLE_RATE = 16000;
-const S_INT16_MAX = 32767;
+const PV_FILTER_ORDER = 50;
 
-let _inputSampleRate: number;
-let _outputSampleRate: number;
-let _frameLength: number;
-let _inputBuffer: Array<number> = [];
+let _downsampler: Downsampler;
+let _outputframeLength: number;
+let _oldInputBuffer: Int16Array;
+let _outputBuffer: Int16Array;
 
 let _audioDumpActive: boolean;
 let _audioDumpBuffer: Int16Array;
 let _audioDumpBufferIndex: number;
 let _audioDumpNumFrames: number;
 
-function init(
+async function init(
   inputSampleRate: number,
   outputSampleRate: number = PV_SAMPLE_RATE,
   frameLength: number = PV_FRAME_LENGTH,
-): void {
-  _inputSampleRate = inputSampleRate;
-  _outputSampleRate = outputSampleRate;
-  _frameLength = frameLength;
+): Promise<void> {
+  if (!Number.isInteger(inputSampleRate)) {
+    throw new Error(
+      `Invalid inputSampleRate value: ${inputSampleRate}. Expected integer.`,
+    );
+  }
+  if (!Number.isInteger(outputSampleRate)) {
+    throw new Error(
+      `Invalid outputSampleRate value: ${outputSampleRate}. Expected integer.`,
+    );
+  }
+  if (!Number.isInteger(frameLength)) {
+    throw new Error(
+      `Invalid frameLength value: ${frameLength}. Expected integer.`,
+    );
+  }
 
-  console.assert(Number.isInteger(_inputSampleRate));
-  console.assert(Number.isInteger(_outputSampleRate));
-  console.assert(Number.isInteger(_frameLength));
+  _outputframeLength = frameLength;
+  _oldInputBuffer = new Int16Array([]);
+  _downsampler = await Downsampler.create(
+    inputSampleRate,
+    outputSampleRate,
+    PV_FILTER_ORDER,
+    _outputframeLength,
+  );
 
-  _inputBuffer = [];
+  postMessage(
+    {
+      command: 'ds-ready',
+    },
+    undefined as any,
+  );
 }
 
 function startAudioDump(durationMs: number = 3000): void {
-  _audioDumpNumFrames = durationMs * (PV_FRAME_LENGTH / PV_SAMPLE_RATE);
+  _audioDumpNumFrames = Math.floor(
+    (durationMs * PV_SAMPLE_RATE) / 1000 / PV_FRAME_LENGTH,
+  );
   _audioDumpActive = true;
   _audioDumpBufferIndex = 0;
-  _audioDumpBuffer = new Int16Array(_audioDumpNumFrames * _frameLength);
+  _audioDumpBuffer = new Int16Array(_audioDumpNumFrames * _outputframeLength);
 }
 
 function processAudio(inputFrame: Float32Array): void {
+  if (inputFrame.constructor !== Float32Array) {
+    throw new Error(
+      `Invalid inputFrame type: ${typeof inputFrame}. Expected Float32Array.`,
+    );
+  }
+  const inputBuffer = new Int16Array(inputFrame.length);
   for (let i = 0; i < inputFrame.length; i++) {
-    _inputBuffer.push(inputFrame[i] * S_INT16_MAX);
+    if (inputFrame[i] < 0) {
+      inputBuffer[i] = 0x8000 * inputFrame[i];
+    } else {
+      inputBuffer[i] = 0x7fff * inputFrame[i];
+    }
   }
 
-  while (
-    (_inputBuffer.length * _outputSampleRate) / _inputSampleRate >
-    _frameLength
-  ) {
-    const outputFrame = new Int16Array(_frameLength);
-    let sum = 0;
-    let num = 0;
-    let outputIndex = 0;
-    let inputIndex = 0;
+  let inputBufferExtended = new Int16Array(
+    _oldInputBuffer.length + inputBuffer.length,
+  );
+  inputBufferExtended.set(_oldInputBuffer);
+  inputBufferExtended.set(inputBuffer, _oldInputBuffer.length);
+  _oldInputBuffer = new Int16Array([]);
 
-    while (outputIndex < _frameLength) {
-      sum = 0;
-      num = 0;
-      while (
-        inputIndex <
-        Math.min(
-          _inputBuffer.length,
-          ((outputIndex + 1) * _inputSampleRate) / _outputSampleRate,
-        )
-      ) {
-        sum += _inputBuffer[inputIndex];
-        num++;
-        inputIndex++;
-      }
-      outputFrame[outputIndex] = sum / num;
-      outputIndex++;
-    }
-
-    if (_audioDumpActive) {
-      _audioDumpBuffer.set(outputFrame, _audioDumpBufferIndex * _frameLength);
-      _audioDumpBufferIndex++;
-
-      if (_audioDumpBufferIndex === _audioDumpNumFrames) {
-        _audioDumpActive = false;
-        // Done collecting frames, create a Blob and send it to main thread
-        const pcmBlob = new Blob([_audioDumpBuffer], {
-          type: 'application/octet-stream',
-        });
-
-        postMessage(
-          {
-            command: 'audio_dump_complete',
-            blob: pcmBlob,
-          },
-          undefined as any,
+  while (inputBufferExtended.length > 0) {
+    const numInputSamples =
+      _downsampler.getNumRequiredInputSamples(_outputframeLength);
+    if (numInputSamples > inputBufferExtended.length) {
+      _oldInputBuffer = new Int16Array(inputBufferExtended.length);
+      _oldInputBuffer.set(inputBufferExtended);
+      inputBufferExtended = inputBufferExtended.slice(
+        inputBufferExtended.length,
+      );
+    } else {
+      _outputBuffer = new Int16Array(_outputframeLength);
+      _downsampler.process(
+        inputBufferExtended.slice(0, numInputSamples),
+        numInputSamples,
+        _outputBuffer,
+      );
+      if (_audioDumpActive) {
+        _audioDumpBuffer.set(
+          _outputBuffer,
+          _audioDumpBufferIndex * _outputframeLength,
         );
+        _audioDumpBufferIndex++;
+
+        if (_audioDumpBufferIndex === _audioDumpNumFrames) {
+          _audioDumpActive = false;
+          // Done collecting frames, create a Blob and send it to main thread
+          const pcmBlob = new Blob([_audioDumpBuffer], {
+            type: 'application/octet-stream',
+          });
+
+          postMessage(
+            {
+              command: 'audio_dump_complete',
+              blob: pcmBlob,
+            },
+            undefined as any,
+          );
+        }
       }
+
+      postMessage(
+        {
+          command: 'output',
+          outputFrame: _outputBuffer,
+        },
+        undefined as any,
+      );
+      inputBufferExtended = inputBufferExtended.slice(numInputSamples);
     }
-
-    postMessage(
-      {
-        command: 'output',
-        outputFrame: outputFrame,
-      },
-      undefined as any,
-    );
-
-    _inputBuffer = _inputBuffer.slice(inputIndex);
   }
 }
 
 function reset(): void {
-  _inputBuffer = [];
+  _downsampler.reset();
+  _oldInputBuffer = new Int16Array([]);
 }
 
 onmessage = function (event: MessageEvent<DownsamplingWorkerRequest>): void {

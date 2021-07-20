@@ -25,6 +25,10 @@ export type DownsamplingWorkerRequestInit = {
   frameLength?: number;
 };
 
+export type DownsamplingWorkerResponseReady = {
+  command: 'ds-ready';
+};
+
 export type DownsamplingWorkerResponseFrame = {
   command: 'output';
   outputFrame: Int16Array;
@@ -48,8 +52,25 @@ export type DownsamplingWorkerRequest =
 
 export type DownsamplingWorkerResponse =
   | DownsamplingWorkerResponseFrame
+  | DownsamplingWorkerResponseReady
   | DownsamplingWorkerResponseAudioDumpComplete;
 
 export interface DownsamplingWorker extends Omit<Worker, 'postMessage'> {
   postMessage(command: DownsamplingWorkerRequest): void;
+}
+
+export interface DownsamplerInterface {
+  /** Release all resources acquired by Downsampler */
+  delete(): void;
+  /** Get the number of required input samples given the desired number of output samples */
+  getNumRequiredInputSamples(numSample: number): number;
+  /** Decrease the sample rate of the inputBuffer and put the output signal into outputBuffer;
+   * returns the num of processed samples from the input signal*/
+  process(
+    inputBuffer: Int16Array,
+    inputBufferSize: number,
+    outputBuffer: Int16Array,
+  ): number;
+  /** Reset Downsampler and clear all internal states */
+  reset(): void;
 }
