@@ -33,10 +33,6 @@ The build script outputs minified and non-minified versions of the IIFE and ESM 
 
 ## Demo
 
-This is a basic demo to show how to use [@picovoice/web-voice-processor](https://www.npmjs.com/package/@picovoice/web-voice-processor).
-
-### Install & run
-
 Go to the `demo` directory. Use `yarn` or `npm` to install the dependencies, and the `start` script to start a local web server hosting the demo.
 
 ```console
