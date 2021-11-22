@@ -69,7 +69,7 @@ async function init(
     const errorMessage = error.toString();
     postMessage(
       {
-        command: 'ds-faile',
+        command: 'ds-failed',
         message: errorMessage,
       },
       undefined as any,
