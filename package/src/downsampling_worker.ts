@@ -50,19 +50,31 @@ async function init(
 
   _outputframeLength = frameLength;
   _oldInputBuffer = new Int16Array([]);
-  _downsampler = await Downsampler.create(
-    inputSampleRate,
-    outputSampleRate,
-    PV_FILTER_ORDER,
-    _outputframeLength,
-  );
 
-  postMessage(
-    {
-      command: 'ds-ready',
-    },
-    undefined as any,
-  );
+  try {
+    _downsampler = await Downsampler.create(
+      inputSampleRate,
+      outputSampleRate,
+      PV_FILTER_ORDER,
+      _outputframeLength,
+    );
+
+    postMessage(
+      {
+        command: 'ds-ready',
+      },
+      undefined as any,
+    );
+  } catch (error) {
+    const errorMessage = error.toString();
+    postMessage(
+      {
+        command: 'ds-faile',
+        message: errorMessage,
+      },
+      undefined as any,
+    );
+  }
 }
 
 function startAudioDump(durationMs: number = 3000): void {

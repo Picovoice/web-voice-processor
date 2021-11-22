@@ -39,6 +39,8 @@ export default class DownsamplerWorkerFactory {
       ): void {
         if (event.data.command === 'ds-ready') {
           resolve(downsamplingWorker);
+        } else if (event.data.command === 'ds-failed') {
+          reject(event.data.message);
         }
       };
     });

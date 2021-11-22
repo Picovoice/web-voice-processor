@@ -29,6 +29,11 @@ export type DownsamplingWorkerResponseReady = {
   command: 'ds-ready';
 };
 
+export type PorcupineWorkerResponseFailed = {
+  command: 'ds-failed';
+  message: string;
+};
+
 export type DownsamplingWorkerResponseFrame = {
   command: 'output';
   outputFrame: Int16Array;
@@ -53,6 +58,7 @@ export type DownsamplingWorkerRequest =
 export type DownsamplingWorkerResponse =
   | DownsamplingWorkerResponseFrame
   | DownsamplingWorkerResponseReady
+  | PorcupineWorkerResponseFailed
   | DownsamplingWorkerResponseAudioDumpComplete;
 
 export interface DownsamplingWorker extends Omit<Worker, 'postMessage'> {
