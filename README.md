@@ -11,7 +11,7 @@ A library for real-time voice processing in web browsers.
 - Converts the microphone sampling rate to 16kHz, the _de facto_ standard for voice processing engines.
 - Provides a flexible interface to pass in arbitrary voice processing workers.
 
-For more detailed information, refer to the [package's readme](package/README.md)
+For more detailed information, refer to the [package's readme](package/README.md).
 
 ## Build from source
 
