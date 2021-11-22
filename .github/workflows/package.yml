@@ -7,7 +7,7 @@ on:
     paths:
       - 'package/**'
   pull_request:
-    branches: [ master, v2.0 ]
+    branches: [ master ]
     paths:
       - 'package/**'
 
@@ -21,7 +21,6 @@ jobs:
 
     strategy:
       matrix:
-        python-version: [3.8]
         node-version: [lts/*]
 
     steps:
