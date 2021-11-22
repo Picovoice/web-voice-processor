@@ -13,12 +13,6 @@ A library for real-time voice processing in web browsers.
 
 For more detailed information, refer to the [web-voice-processor package readme](package/README.md)
 
-- [Web Voice Processor](#web-voice-processor)
-  - [Build from source](#build-from-source)
-  - [Demo](#demo)
-    - [Install & run](#install--run)
-
-
 ## Build from source
 
 Go to the `package` directory. Use `yarn` or `npm` to build WebVoiceProcessor:
