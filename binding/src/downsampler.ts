@@ -25,6 +25,7 @@ type DownsamplerWasmOutput = {
   pvDownsamplerProcess: CallableFunction;
   pvDownsamplerReset: CallableFunction;
   pvDownsamplerDelete: CallableFunction;
+  version: string;
 };
 
 class Downsampler implements DownsamplerInterface {
@@ -41,7 +42,11 @@ class Downsampler implements DownsamplerInterface {
   private _memoryBuffer: Int16Array;
   private _memoryBufferView: DataView;
 
+  public static _version: string;
+
   private constructor(handleWasm: DownsamplerWasmOutput) {
+    Downsampler._version = handleWasm.version;
+
     this._pvDownsamplerConvertNumSamplesToInputSampleRate =
       handleWasm.pvDownsamplerConvertNumSamplesToInputSampleRate;
     this._pvDownsamplerReset = handleWasm.pvDownsamplerReset;
@@ -79,10 +84,12 @@ class Downsampler implements DownsamplerInterface {
     order: number,
     frameLength: number,
   ): Promise<DownsamplerWasmOutput> {
+
     const memory = new WebAssembly.Memory({ initial: 100, maximum: 100 });
 
+    const memoryBufferUint8 = new Uint8Array(memory.buffer);
+
     const pvConsoleLogWasm = function (index: number): void {
-      const memoryBufferUint8 = new Uint8Array(memory.buffer);
       console.log(
         arrayBufferToStringAtIndex(memoryBufferUint8, index),
       );
@@ -93,7 +100,6 @@ class Downsampler implements DownsamplerInterface {
       fileNameAddress: number,
     ): void {
       if (expr === 0) {
-        const memoryBufferUint8 = new Uint8Array(memory.buffer);
         const fileName = arrayBufferToStringAtIndex(
           memoryBufferUint8,
           fileNameAddress,
@@ -125,6 +131,8 @@ class Downsampler implements DownsamplerInterface {
       .pv_downsampler_init as CallableFunction;
     const pvDownsamplerConvertNumSamplesToInputSampleRate = instance.exports
       .pv_downsampler_convert_num_samples_to_input_sample_rate as CallableFunction;
+    const pvDownsamplerVersion = instance.exports
+      .pv_downsampler_version as CallableFunction;
 
     const objectAddressAddress = alignedAlloc(
       Int32Array.BYTES_PER_ELEMENT,
@@ -139,6 +147,13 @@ class Downsampler implements DownsamplerInterface {
       order,
       objectAddressAddress,
     );
+
+    const versionAddress = await pvDownsamplerVersion();
+    const version = arrayBufferToStringAtIndex(
+      memoryBufferUint8,
+      versionAddress
+    );
+
     if (status !== 0) {
       throw new Error(`pv_downsampler_init failed with status ${status}`);
     }
@@ -164,6 +179,7 @@ class Downsampler implements DownsamplerInterface {
       throw new Error('malloc failed: Cannot allocate memory');
     }
 
+
     const pvDownsamplerReset = instance.exports
       .pvDownsamplerReset as CallableFunction;
     const pvDownsamplerProcess = instance.exports
@@ -171,6 +187,7 @@ class Downsampler implements DownsamplerInterface {
     const pvDownsamplerDelete = instance.exports
       .pv_downsampler_delete as CallableFunction;
 
+    
     return {
       inputBufferAddress: inputBufferAddress,
       inputframeLength: inputframeLength,
@@ -183,6 +200,7 @@ class Downsampler implements DownsamplerInterface {
       pvDownsamplerProcess: pvDownsamplerProcess,
       pvDownsamplerReset: pvDownsamplerReset,
       pvDownsamplerDelete: pvDownsamplerDelete,
+      version: version,
     };
   }
 
@@ -217,6 +235,10 @@ class Downsampler implements DownsamplerInterface {
 
   public delete(): void {
     this._pvDownsamplerDelete(this._objectAddress);
+  }
+
+  get version(): string {
+    return Downsampler._version;
   }
 
   public getNumRequiredInputSamples(numSample: number): number {

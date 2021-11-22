@@ -73,4 +73,6 @@ export interface DownsamplerInterface {
   ): number;
   /** Reset Downsampler and clear all internal states */
   reset(): void;
+  /** The version of Downsampler */
+  readonly version: string;
 }
