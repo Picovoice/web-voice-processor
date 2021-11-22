@@ -29,6 +29,11 @@ export type DownsamplingWorkerResponseReady = {
   command: 'ds-ready';
 };
 
+export type DownsamplingWorkerResponseFailed = {
+  command: 'ds-failed';
+  message: string;
+};
+
 export type DownsamplingWorkerResponseFrame = {
   command: 'output';
   outputFrame: Int16Array;
@@ -53,6 +58,7 @@ export type DownsamplingWorkerRequest =
 export type DownsamplingWorkerResponse =
   | DownsamplingWorkerResponseFrame
   | DownsamplingWorkerResponseReady
+  | DownsamplingWorkerResponseFailed
   | DownsamplingWorkerResponseAudioDumpComplete;
 
 export interface DownsamplingWorker extends Omit<Worker, 'postMessage'> {
@@ -73,4 +79,6 @@ export interface DownsamplerInterface {
   ): number;
   /** Reset Downsampler and clear all internal states */
   reset(): void;
+  /** The version of Downsampler */
+  readonly version: string;
 }
