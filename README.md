@@ -41,7 +41,7 @@ This is a basic demo to show how to use [@picovoice/web-voice-processor](https:/
 
 ### Install & run
 
-Use `yarn` or `npm` to install the dependencies, and the `start` script to start a local web server hosting the demo.
+Go to the `demo` directory. Use `yarn` or `npm` to install the dependencies, and the `start` script to start a local web server hosting the demo.
 
 ```console
 yarn
