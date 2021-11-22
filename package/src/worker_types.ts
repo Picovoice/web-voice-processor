@@ -29,7 +29,7 @@ export type DownsamplingWorkerResponseReady = {
   command: 'ds-ready';
 };
 
-export type PorcupineWorkerResponseFailed = {
+export type DownsamplingWorkerResponseFailed = {
   command: 'ds-failed';
   message: string;
 };
@@ -58,7 +58,7 @@ export type DownsamplingWorkerRequest =
 export type DownsamplingWorkerResponse =
   | DownsamplingWorkerResponseFrame
   | DownsamplingWorkerResponseReady
-  | PorcupineWorkerResponseFailed
+  | DownsamplingWorkerResponseFailed
   | DownsamplingWorkerResponseAudioDumpComplete;
 
 export interface DownsamplingWorker extends Omit<Worker, 'postMessage'> {
