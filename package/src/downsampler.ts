@@ -11,8 +11,10 @@
 
 import { DownsamplerInterface } from './worker_types';
 import { WASM_BASE64 } from './downsampler_b64';
-import { arrayBufferToStringAtIndex, base64ToUint8Array} from './utils';
+import { arrayBufferToStringAtIndex, base64ToUint8Array } from './utils';
 import { wasiSnapshotPreview1Emulator } from './wasi_snapshot';
+
+const PV_STATUS_SUCCESS = 10000;
 
 type DownsamplerWasmOutput = {
   inputBufferAddress: number;
@@ -84,15 +86,12 @@ class Downsampler implements DownsamplerInterface {
     order: number,
     frameLength: number,
   ): Promise<DownsamplerWasmOutput> {
-
     const memory = new WebAssembly.Memory({ initial: 100, maximum: 100 });
 
     const memoryBufferUint8 = new Uint8Array(memory.buffer);
 
     const pvConsoleLogWasm = function (index: number): void {
-      console.log(
-        arrayBufferToStringAtIndex(memoryBufferUint8, index),
-      );
+      console.log(arrayBufferToStringAtIndex(memoryBufferUint8, index));
     };
     const pvAssertWasm = function (
       expr: number,
@@ -151,10 +150,10 @@ class Downsampler implements DownsamplerInterface {
     const versionAddress = await pvDownsamplerVersion();
     const version = arrayBufferToStringAtIndex(
       memoryBufferUint8,
-      versionAddress
+      versionAddress,
     );
 
-    if (status !== 0) {
+    if (status !== PV_STATUS_SUCCESS) {
       throw new Error(`pv_downsampler_init failed with status ${status}`);
     }
     const memoryBufferView = new DataView(memory.buffer);
@@ -179,7 +178,6 @@ class Downsampler implements DownsamplerInterface {
       throw new Error('malloc failed: Cannot allocate memory');
     }
 
-
     const pvDownsamplerReset = instance.exports
       .pvDownsamplerReset as CallableFunction;
     const pvDownsamplerProcess = instance.exports
@@ -187,7 +185,6 @@ class Downsampler implements DownsamplerInterface {
     const pvDownsamplerDelete = instance.exports
       .pv_downsampler_delete as CallableFunction;
 
-    
     return {
       inputBufferAddress: inputBufferAddress,
       inputframeLength: inputframeLength,
