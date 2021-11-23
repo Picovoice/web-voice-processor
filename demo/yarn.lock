@@ -9,7 +9,7 @@
   dependencies:
     regenerator-runtime "^0.13.4"
 
-"@picovoice/web-voice-processor@^2.1.1":
+"@picovoice/web-voice-processor@^2.1.2":
   version "2.1.1"
   resolved "https://registry.yarnpkg.com/@picovoice/web-voice-processor/-/web-voice-processor-2.1.1.tgz#ad895f996aa01005493cab0102229107e8bb44a9"
   integrity sha512-y0ymkgYV52LVSSwGg1bl5nGjtIYebKXuYHilmraDk5+BkjyRP6hFeA+xumhMVkO7M8s10B1Xl2nB6mR01H/lmA==
