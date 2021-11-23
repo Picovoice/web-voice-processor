@@ -17,7 +17,9 @@ import {
 } from './worker_types';
 
 export default class DownsamplerWorkerFactory {
-  private constructor() {}
+  private constructor() {
+    // do nothing
+  }
 
   public static async create(
     inputFrequency: number,
