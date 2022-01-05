@@ -14,10 +14,10 @@ A library for real-time voice processing in web browsers.
 - [Web Voice Processor](#web-voice-processor)
   - [Browser compatibility](#browser-compatibility)
     - [Browser features](#browser-features)
-    - [AudioWorklet & Safari](#audioworklet---safari)
+    - [AudioWorklet & Safari](#audioworklet--safari)
   - [Installation](#installation)
   - [How to use](#how-to-use)
-    - [Via ES Modules (Create React App, Angular, Webpack, etc.)](#via-es-modules--create-react-app--angular--webpack--etc-)
+    - [Via ES Modules (Create React App, Angular, Webpack, etc.)](#via-es-modules-create-react-app-angular-webpack-etc)
     - [Via HTML script tag](#via-html-script-tag)
     - [Start listening](#start-listening)
     - [Stop listening](#stop-listening)
@@ -84,7 +84,7 @@ import { WebVoiceProcessor } from '@picovoice/web-voice-processor';
 Add the following to your HTML:
 
 ```html
-<script src="@picovoice/web-voice-processor/dist/iife/index.js"></script>
+<script src="@picovoice/web-voice-processor/dist/iife/index.min.js"></script>
 ```
 
 The IIFE version of the library adds `WebVoiceProcessor` to the `window` global scope.

@@ -9,10 +9,10 @@
   dependencies:
     regenerator-runtime "^0.13.4"
 
-"@picovoice/web-voice-processor@^2.1.2":
-  version "2.1.2"
-  resolved "https://registry.yarnpkg.com/@picovoice/web-voice-processor/-/web-voice-processor-2.1.2.tgz#cac4456b3ef06dee5664e27be6db348ae4e2d46a"
-  integrity sha512-tDOFQtB79SX4m44Oj3W7I2q7Qvdwc52gJDHT1JXw80mJaog7RLRRUd7vANlGT0nJmhUWjYE7fxlEctPf2dyJcA==
+"@picovoice/web-voice-processor@^2.1.3":
+  version "2.1.3"
+  resolved "https://registry.yarnpkg.com/@picovoice/web-voice-processor/-/web-voice-processor-2.1.3.tgz#b20df438e27ee44b451a0f8bf161efd25e13b947"
+  integrity sha512-79vU4G7mw0J3b7y2N3jNpYKctOJmuNxZg3+w3MMSjwgZuPFtRbBevQmRSc5/W+oZgElbLKF49X0X0VcOuOYj8Q==
   dependencies:
     "@babel/runtime" "^7.12.18"
 
