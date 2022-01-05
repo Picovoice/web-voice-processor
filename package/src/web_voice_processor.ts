@@ -21,6 +21,8 @@ export type WebVoiceProcessorOptions = {
   frameLength?: number;
   /** Which sample rate to convert to (default: 16000) */
   outputSampleRate?: number;
+  /** Microphone id to use (can be fetched with mediaDevices.enumerateDevices) */
+  deviceId?: string | null;
 };
 
 /**
@@ -54,7 +56,9 @@ export class WebVoiceProcessor {
   ): Promise<WebVoiceProcessor> {
     // Get microphone access and ask user permission
     const microphoneStream = await navigator.mediaDevices.getUserMedia({
-      audio: true,
+      audio: {
+        deviceId: options.deviceId ? { exact: options.deviceId } : undefined,
+      },
     });
 
     const audioContext = new (window.AudioContext ||
