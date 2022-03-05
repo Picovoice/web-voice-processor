@@ -17,6 +17,12 @@
         background-color: #377dff;
         height: 1rem;
       }
+
+      br {
+        display: block;
+        margin: 10px 0;
+      }
+
     </style>
     <!-- IIFE -->
     <script src="node_modules/@picovoice/web-voice-processor/dist/iife/index.js"></script>
@@ -50,7 +56,7 @@
           'WebVoiceProcessor is initializing & awaiting the result of microphone permissions ...',
         );
 
-        window.WebVoiceProcessor.WebVoiceProcessor.init({ engines: [vuWorkerEngine] })
+        window.WebVoiceProcessor.WebVoiceProcessor.init({ engines: [vuWorkerEngine], start:true })
           .then(webvp => {
             handle = webvp;
             document.getElementById('start-audio-dump').disabled = false;
@@ -63,7 +69,7 @@
 
         document.getElementById('start-audio-dump').onclick = () => {
           writeMessage('Starting Audio dump ...');
-          var blobPromise = handle.audioDump(3000);
+          var blobPromise = handle.audioDump(10000);
           document.getElementById('start-audio-dump').disabled = true;
           var downloadLink = document.getElementById('audio-download-link');
           downloadLink.style.visibility = 'hidden';
@@ -79,6 +85,39 @@
             downloadLink.style.visibility = 'visible';
           });
         };
+
+        document.getElementById('start').onclick = () => {
+          document.getElementById('start').disabled = true;
+          writeMessage('Starting ...');
+          handle.start();
+          document.getElementById('stop').disabled = false;
+          document.getElementById('pause').disabled = false;
+          document.getElementById('resume').disabled = true;
+        };
+
+        document.getElementById('stop').onclick = () => {
+          document.getElementById('stop').disabled = true;
+          writeMessage('Stoping ...');
+          handle.stop();
+          document.getElementById('start').disabled = false;
+          document.getElementById('pause').disabled = true;
+          document.getElementById('resume').disabled = true;
+        };
+
+        document.getElementById('resume').onclick = () => {
+          document.getElementById('resume').disabled = true;
+          writeMessage('Resuming ...');
+          handle.resume();
+          document.getElementById('pause').disabled = false;
+        };
+
+        document.getElementById('pause').onclick = () => {
+          document.getElementById('pause').disabled = true;
+          writeMessage('Pausing ...');
+          handle.pause();
+          document.getElementById('resume').disabled = false;
+        };
+
       });
     </script>
   </head>
@@ -87,7 +126,12 @@
     <div id="vu-meter">
       <div id="audio-rms-level">&nbsp;</div>
     </div>
-    <button id="start-audio-dump" disabled>Start Audio Dump (3s)</button>
+    <button id="stop" >Stop Recording</button>
+    <button id="start" disabled>Start Recording</button>
+    <button id="pause" >Pause Recording</button>
+    <button id="resume"disabled>Resume Recording</button>
+    <br>
+    <button id="start-audio-dump" disabled>Start Audio Dump (10s)</button>
     <a href="#" style="visibility: hidden" download id="audio-download-link"
       >Download raw PCM</a
     >
