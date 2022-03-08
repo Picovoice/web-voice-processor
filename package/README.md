@@ -135,14 +135,20 @@ handle.start();
 
 ### Stop listening
 
-Pause/Resume processing (microphone and Web Audio context will still be active):
+Pause processing (microphone and Web Audio context will still be active):
 
 ```javascript
 handle.pause();
 handle.resume();
 ```
 
-Close the microphone [MediaStream](https://developer.mozilla.org/en-US/docs/Web/API/MediaStream) and release resources:
+Close the microphone [MediaStream](https://developer.mozilla.org/en-US/docs/Web/API/MediaStream) and stop prcessing:
+
+```javascript
+handle.stop();
+```
+
+Release resources and stop all activities:
 
 ```javascript
 handle.release();
