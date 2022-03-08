@@ -109,7 +109,8 @@ function processAudio(inputFrame: Float32Array): void {
   _oldInputBuffer = new Int16Array([]);
 
   while (inputBufferExtended.length > 0) {
-    const numInputSamples = _downsampler.getNumRequiredInputSamples(_outputframeLength);
+    // +1 is for the extra needed sample for the interpolation
+    const numInputSamples = _downsampler.getNumRequiredInputSamples(_outputframeLength) + 1;
     if (numInputSamples > inputBufferExtended.length) {
       _oldInputBuffer = new Int16Array(inputBufferExtended.length);
       _oldInputBuffer.set(inputBufferExtended);
