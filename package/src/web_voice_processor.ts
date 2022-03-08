@@ -229,6 +229,7 @@ export class WebVoiceProcessor {
   public async start(): Promise<void> {
     if (this._isReleased) {
       this._isReleased = false;
+      this._isRecording = true;
       const [microphoneStream, audioContext, audioSource, downsamplingWorker] = await WebVoiceProcessor._initMic(this._options)
 
       this._mediaStream = microphoneStream;
