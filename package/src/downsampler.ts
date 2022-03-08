@@ -164,7 +164,7 @@ class Downsampler implements DownsamplerInterface {
     );
     const inputBufferAddress = alignedAlloc(
       Int16Array.BYTES_PER_ELEMENT,
-      inputframeLength * Int16Array.BYTES_PER_ELEMENT,
+      (inputframeLength+1) * Int16Array.BYTES_PER_ELEMENT,
     );
     if (inputBufferAddress === 0) {
       throw new Error('malloc failed: Cannot allocate memory');
