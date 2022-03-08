@@ -59,8 +59,6 @@ export class WebVoiceProcessor {
       window.webkitAudioContext)();
     const audioSource = audioContext.createMediaStreamSource(microphoneStream);
 
-    console.log(audioSource.context.sampleRate)
-
     const downsamplingWorker = await DownsamplerWorkerFactory.create(
       audioSource.context.sampleRate,
       options.outputSampleRate,

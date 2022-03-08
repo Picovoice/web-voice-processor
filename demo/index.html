@@ -17,15 +17,10 @@
         background-color: #377dff;
         height: 1rem;
       }
-
-      br {
-        display: block;
-        margin: 10px 0;
-      }
-
     </style>
     <!-- IIFE -->
     <script src="node_modules/@picovoice/web-voice-processor/dist/iife/index.js"></script>
+    <script src="node_modules/wavefile/dist/wavefile.js"></script>
     <script type="application/javascript">
       var handle;
 
@@ -75,14 +70,18 @@
           downloadLink.style.visibility = 'hidden';
 
           blobPromise.then(blob => {
-            var blobUrl = window.URL.createObjectURL(blob);
-            downloadLink.href = blobUrl;
-            writeMessage(
-              'Audio dump complete. Click to download the PCM binary data.',
-            );
-            document.getElementById('start-audio-dump').disabled = false;
+            let wav = new wavefile.WaveFile()
+            blob.arrayBuffer().then(data => {
+              const dataInt16Array = new Int16Array(data)
+              wav.fromScratch(1, 16000, "16", dataInt16Array)
+              downloadLink.href = wav.toDataURI();
+              writeMessage(
+                      'Audio dump complete. Click to download the PCM binary data.',
+              );
+              document.getElementById('start-audio-dump').disabled = false;
 
-            downloadLink.style.visibility = 'visible';
+              downloadLink.style.visibility = 'visible';
+            })
           });
         };
 
@@ -130,10 +129,9 @@
     <button id="start" disabled>Start Recording</button>
     <button id="pause" >Pause Recording</button>
     <button id="resume"disabled>Resume Recording</button>
-    <br>
     <button id="start-audio-dump" disabled>Start Audio Dump (10s)</button>
-    <a href="#" style="visibility: hidden" download id="audio-download-link"
-      >Download raw PCM</a
+    <a href="#" style="visibility: hidden" download="recorded.wav" id="audio-download-link"
+      >Download PCM in wav format</a
     >
   </body>
 </html>

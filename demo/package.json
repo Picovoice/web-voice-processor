@@ -18,6 +18,7 @@
   "license": "Apache-2.0",
   "dependencies": {
     "@picovoice/web-voice-processor": "file:../package",
-    "http-server": "^14.0.0"
+    "http-server": "^14.0.0",
+    "wavefile": "^11.0.0"
   }
 }
