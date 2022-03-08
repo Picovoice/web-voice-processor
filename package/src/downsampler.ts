@@ -9,10 +9,10 @@
     specific language governing permissions and limitations under the License.
 */
 
-import { DownsamplerInterface } from './worker_types';
-import { WASM_BASE64 } from './downsampler_b64';
-import { arrayBufferToStringAtIndex, base64ToUint8Array } from './utils';
-import { wasiSnapshotPreview1Emulator } from './wasi_snapshot';
+import {DownsamplerInterface} from './worker_types';
+import {WASM_BASE64} from './downsampler_b64';
+import {arrayBufferToStringAtIndex, base64ToUint8Array} from './utils';
+import {wasiSnapshotPreview1Emulator} from './wasi_snapshot';
 
 const PV_STATUS_SUCCESS = 10000;
 
@@ -86,7 +86,9 @@ class Downsampler implements DownsamplerInterface {
     order: number,
     frameLength: number,
   ): Promise<DownsamplerWasmOutput> {
-    const memory = new WebAssembly.Memory({ initial: 100, maximum: 100 });
+    // A WebAssembly page has a constant size of 64KiB. -> 4MiB ~= 64 pages
+    // minimum memory requirements for init: 2 pages
+    const memory = new WebAssembly.Memory({initial: 64, maximum: 128});
 
     const memoryBufferUint8 = new Uint8Array(memory.buffer);
 
@@ -120,18 +122,15 @@ class Downsampler implements DownsamplerInterface {
     };
 
     const wasmCodeArray = base64ToUint8Array(WASM_BASE64);
-    const { instance } = await WebAssembly.instantiate(
+    const {instance} = await WebAssembly.instantiate(
       wasmCodeArray,
       importObject,
     );
 
     const alignedAlloc = instance.exports.aligned_alloc as CallableFunction;
-    const pvDownsamplerInit = instance.exports
-      .pv_downsampler_init as CallableFunction;
-    const pvDownsamplerConvertNumSamplesToInputSampleRate = instance.exports
-      .pv_downsampler_convert_num_samples_to_input_sample_rate as CallableFunction;
-    const pvDownsamplerVersion = instance.exports
-      .pv_downsampler_version as CallableFunction;
+    const pvDownsamplerInit = instance.exports.pv_downsampler_init as CallableFunction;
+    const pvDownsamplerConvertNumSamplesToInputSampleRate = instance.exports.pv_downsampler_convert_num_samples_to_input_sample_rate as CallableFunction;
+    const pvDownsamplerVersion = instance.exports.pv_downsampler_version as CallableFunction;
 
     const objectAddressAddress = alignedAlloc(
       Int32Array.BYTES_PER_ELEMENT,
@@ -165,7 +164,7 @@ class Downsampler implements DownsamplerInterface {
     );
     const inputBufferAddress = alignedAlloc(
       Int16Array.BYTES_PER_ELEMENT,
-      inputframeLength * Int16Array.BYTES_PER_ELEMENT,
+      (inputframeLength+1) * Int16Array.BYTES_PER_ELEMENT,
     );
     if (inputBufferAddress === 0) {
       throw new Error('malloc failed: Cannot allocate memory');
@@ -179,7 +178,7 @@ class Downsampler implements DownsamplerInterface {
     }
 
     const pvDownsamplerReset = instance.exports
-      .pvDownsamplerReset as CallableFunction;
+      .pv_downsampler_reset as CallableFunction;
     const pvDownsamplerProcess = instance.exports
       .pv_downsampler_process as CallableFunction;
     const pvDownsamplerDelete = instance.exports
@@ -192,7 +191,7 @@ class Downsampler implements DownsamplerInterface {
       objectAddress: objectAddress,
       outputBufferAddress: outputBufferAddress,
       pvDownsamplerConvertNumSamplesToInputSampleRate:
-        pvDownsamplerConvertNumSamplesToInputSampleRate,
+      pvDownsamplerConvertNumSamplesToInputSampleRate,
       pvDownsamplerInit: pvDownsamplerInit,
       pvDownsamplerProcess: pvDownsamplerProcess,
       pvDownsamplerReset: pvDownsamplerReset,

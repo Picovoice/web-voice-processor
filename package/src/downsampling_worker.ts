@@ -9,7 +9,7 @@
     specific language governing permissions and limitations under the License.
 */
 
-import { DownsamplingWorkerRequest } from './worker_types';
+import {DownsamplingWorkerRequest} from './worker_types';
 
 import Downsampler from './downsampler';
 
@@ -109,8 +109,8 @@ function processAudio(inputFrame: Float32Array): void {
   _oldInputBuffer = new Int16Array([]);
 
   while (inputBufferExtended.length > 0) {
-    const numInputSamples =
-      _downsampler.getNumRequiredInputSamples(_outputframeLength);
+    // +1 is for the extra needed sample for the interpolation
+    const numInputSamples = _downsampler.getNumRequiredInputSamples(_outputframeLength) + 1;
     if (numInputSamples > inputBufferExtended.length) {
       _oldInputBuffer = new Int16Array(inputBufferExtended.length);
       _oldInputBuffer.set(inputBufferExtended);
@@ -165,6 +165,10 @@ function reset(): void {
   _oldInputBuffer = new Int16Array([]);
 }
 
+function release(): void {
+  _downsampler.delete();
+}
+
 onmessage = function (event: MessageEvent<DownsamplingWorkerRequest>): void {
   switch (event.data.command) {
     case 'init':
@@ -179,6 +183,9 @@ onmessage = function (event: MessageEvent<DownsamplingWorkerRequest>): void {
       break;
     case 'reset':
       reset();
+      break;
+    case 'release':
+      release();
       break;
     case 'start_audio_dump':
       startAudioDump(event.data.durationMs);

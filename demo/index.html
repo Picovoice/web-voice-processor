@@ -20,6 +20,7 @@
     </style>
     <!-- IIFE -->
     <script src="node_modules/@picovoice/web-voice-processor/dist/iife/index.js"></script>
+    <script src="node_modules/wavefile/dist/wavefile.js"></script>
     <script type="application/javascript">
       var handle;
 
@@ -50,7 +51,7 @@
           'WebVoiceProcessor is initializing & awaiting the result of microphone permissions ...',
         );
 
-        window.WebVoiceProcessor.WebVoiceProcessor.init({ engines: [vuWorkerEngine] })
+        window.WebVoiceProcessor.WebVoiceProcessor.init({ engines: [vuWorkerEngine], start:true })
           .then(webvp => {
             handle = webvp;
             document.getElementById('start-audio-dump').disabled = false;
@@ -63,22 +64,59 @@
 
         document.getElementById('start-audio-dump').onclick = () => {
           writeMessage('Starting Audio dump ...');
-          var blobPromise = handle.audioDump(3000);
+          var blobPromise = handle.audioDump(10000);
           document.getElementById('start-audio-dump').disabled = true;
           var downloadLink = document.getElementById('audio-download-link');
           downloadLink.style.visibility = 'hidden';
 
           blobPromise.then(blob => {
-            var blobUrl = window.URL.createObjectURL(blob);
-            downloadLink.href = blobUrl;
-            writeMessage(
-              'Audio dump complete. Click to download the PCM binary data.',
-            );
-            document.getElementById('start-audio-dump').disabled = false;
+            let wav = new wavefile.WaveFile()
+            blob.arrayBuffer().then(data => {
+              const dataInt16Array = new Int16Array(data)
+              wav.fromScratch(1, 16000, "16", dataInt16Array)
+              downloadLink.href = wav.toDataURI();
+              writeMessage(
+                      'Audio dump complete. Click to download the PCM binary data.',
+              );
+              document.getElementById('start-audio-dump').disabled = false;
 
-            downloadLink.style.visibility = 'visible';
+              downloadLink.style.visibility = 'visible';
+            })
           });
         };
+
+        document.getElementById('start').onclick = () => {
+          document.getElementById('start').disabled = true;
+          writeMessage('Starting ...');
+          handle.start();
+          document.getElementById('stop').disabled = false;
+          document.getElementById('pause').disabled = false;
+          document.getElementById('resume').disabled = true;
+        };
+
+        document.getElementById('stop').onclick = () => {
+          document.getElementById('stop').disabled = true;
+          writeMessage('Stoping ...');
+          handle.stop();
+          document.getElementById('start').disabled = false;
+          document.getElementById('pause').disabled = true;
+          document.getElementById('resume').disabled = true;
+        };
+
+        document.getElementById('resume').onclick = () => {
+          document.getElementById('resume').disabled = true;
+          writeMessage('Resuming ...');
+          handle.resume();
+          document.getElementById('pause').disabled = false;
+        };
+
+        document.getElementById('pause').onclick = () => {
+          document.getElementById('pause').disabled = true;
+          writeMessage('Pausing ...');
+          handle.pause();
+          document.getElementById('resume').disabled = false;
+        };
+
       });
     </script>
   </head>
@@ -87,9 +125,13 @@
     <div id="vu-meter">
       <div id="audio-rms-level">&nbsp;</div>
     </div>
-    <button id="start-audio-dump" disabled>Start Audio Dump (3s)</button>
-    <a href="#" style="visibility: hidden" download id="audio-download-link"
-      >Download raw PCM</a
+    <button id="stop" >Stop Recording</button>
+    <button id="start" disabled>Start Recording</button>
+    <button id="pause" >Pause Recording</button>
+    <button id="resume"disabled>Resume Recording</button>
+    <button id="start-audio-dump" disabled>Start Audio Dump (10s)</button>
+    <a href="#" style="visibility: hidden" download="recorded.wav" id="audio-download-link"
+      >Download PCM in wav format</a
     >
   </body>
 </html>

@@ -1,5 +1,5 @@
 /*
-    Copyright 2018-2021 Picovoice Inc.
+    Copyright 2018-2022 Picovoice Inc.
 
     You may not use this file except in compliance with the license. A copy of the license is located in the "LICENSE"
     file accompanying this source.
@@ -9,7 +9,7 @@
     specific language governing permissions and limitations under the License.
 */
 
-import { DownsamplingWorker, DownsamplingWorkerResponse } from './worker_types';
+import {DownsamplingWorker, DownsamplingWorkerResponse} from './worker_types';
 import DownsamplerWorkerFactory from './downsampler_worker_factory';
 
 export type WebVoiceProcessorOptions = {
@@ -32,28 +32,21 @@ export type WebVoiceProcessorOptions = {
  */
 export class WebVoiceProcessor {
   private _audioContext: AudioContext;
+  private _audioDumpPromise: Promise<Blob> | null = null;
+  private _audioDumpReject: any = null;
+  private _audioDumpResolve: any = null;
   private _audioSource: MediaStreamAudioSourceNode;
-  private _mediaStream: MediaStream;
   private _downsamplingWorker: DownsamplingWorker;
   private _engines: Array<Worker>;
   private _isRecording: boolean;
   private _isReleased = false;
-  private _audioDumpPromise: Promise<Blob> | null = null;
-  private _audioDumpResolve: any = null;
-  private _audioDumpReject: any = null;
+  private _mediaStream: MediaStream;
+  private _options: WebVoiceProcessorOptions;
 
-  /**
-   * Acquires the microphone audio stream (incl. asking permission),
-   * and continuously forwards the downsampled audio to speech recognition worker engines.
-   *
-   * @param options Startup options including whether to immediately begin
-   * processing, and the set of voice processing engines
-   * @return the promise from mediaDevices.getUserMedia()
-   */
-
-  public static async init(
+  private static async _initMic(
     options: WebVoiceProcessorOptions,
-  ): Promise<WebVoiceProcessor> {
+  ): Promise<any> {
+
     // Get microphone access and ask user permission
     const microphoneStream = await navigator.mediaDevices.getUserMedia({
       audio: {
@@ -72,51 +65,30 @@ export class WebVoiceProcessor {
       options.frameLength,
     );
 
-    return new WebVoiceProcessor(
+    return [
       microphoneStream,
       audioContext,
       audioSource,
       downsamplingWorker,
-      options,
-    );
+    ]
   }
 
-  private constructor(
-    inputMediaStream: MediaStream,
-    audioContext: AudioContext,
-    audioSource: MediaStreamAudioSourceNode,
-    downsamplingWorker: DownsamplingWorker,
-    options: WebVoiceProcessorOptions,
-  ) {
-    this._mediaStream = inputMediaStream;
+  private async _setupAudio(): Promise<any> {
 
-    if (options.engines === undefined) {
-      this._engines = [];
-    } else {
-      this._engines = options.engines;
-    }
-    this._isRecording = options.start ?? true;
-
-    this._downsamplingWorker = downsamplingWorker;
-    this._audioContext = audioContext;
-    this._audioSource = audioSource;
-
-    const node = audioContext.createScriptProcessor(4096, 1, 1);
+    const node = this._audioContext.createScriptProcessor(4096, 1, 1);
     node.onaudioprocess = (event: AudioProcessingEvent): void => {
-      if (!this._isRecording) {
-        return;
+      if (this._isRecording) {
+        this._downsamplingWorker.postMessage({
+          command: 'process',
+          inputFrame: event.inputBuffer.getChannelData(0),
+        });
       }
-
-      downsamplingWorker.postMessage({
-        command: 'process',
-        inputFrame: event.inputBuffer.getChannelData(0),
-      });
     };
 
     this._audioSource.connect(node);
     node.connect(this._audioContext.destination);
 
-    downsamplingWorker.onmessage = (
+    this._downsamplingWorker.onmessage = (
       event: MessageEvent<DownsamplingWorkerResponse>,
     ): void => {
       switch (event.data.command) {
@@ -142,6 +114,55 @@ export class WebVoiceProcessor {
         }
       }
     };
+  }
+
+  /**
+   * Acquires the microphone audio stream (incl. asking permission),
+   * and continuously forwards the downsampled audio to speech recognition worker engines.
+   *
+   * @param options Startup options including whether to immediately begin
+   * processing, and the set of voice processing engines
+   * @return the promise from mediaDevices.getUserMedia()
+   */
+
+  public static async init(
+    options: WebVoiceProcessorOptions,
+  ): Promise<WebVoiceProcessor> {
+
+    const [microphoneStream, audioContext, audioSource, downsamplingWorker] = await this._initMic(options)
+
+    return new WebVoiceProcessor(
+      microphoneStream,
+      audioContext,
+      audioSource,
+      downsamplingWorker,
+      options,
+    );
+  }
+
+  private constructor(
+    inputMediaStream: MediaStream,
+    audioContext: AudioContext,
+    audioSource: MediaStreamAudioSourceNode,
+    downsamplingWorker: DownsamplingWorker,
+    options: WebVoiceProcessorOptions,
+  ) {
+    this._options = options;
+
+    if (options.engines === undefined) {
+      this._engines = [];
+    } else {
+      this._engines = options.engines;
+    }
+    this._isRecording = options.start ?? true;
+
+    this._mediaStream = inputMediaStream;
+    this._downsamplingWorker = downsamplingWorker;
+    this._audioContext = audioContext;
+    this._audioSource = audioSource;
+
+    this._setupAudio();
+
   }
 
   /**
@@ -179,30 +200,46 @@ export class WebVoiceProcessor {
     if (!this._isReleased) {
       this._isReleased = true;
       this._isRecording = false;
-      this._downsamplingWorker.postMessage({ command: 'reset' });
+      this._downsamplingWorker.postMessage({command: 'release'});
       this._downsamplingWorker.terminate();
 
-      for (const track of this._mediaStream.getTracks()) {
+      this._mediaStream.getTracks().forEach(function(track) {
         track.stop();
-      }
+      });
 
       await this._audioContext.close();
     }
   }
 
-  public start(): void {
-    this._isRecording = true;
+  public async stop(): Promise<void> {
+    return this.release()
   }
 
   public pause(): void {
     this._isRecording = false;
+    this._downsamplingWorker.postMessage({command: 'reset'});
   }
 
   public resume(): void {
     this._isRecording = true;
   }
 
-  get audioContext(): AudioContext {
+  public async start(): Promise<void> {
+    if (this._isReleased) {
+      this._isReleased = false;
+      this._isRecording = true;
+      const [microphoneStream, audioContext, audioSource, downsamplingWorker] = await WebVoiceProcessor._initMic(this._options)
+
+      this._mediaStream = microphoneStream;
+      this._downsamplingWorker = downsamplingWorker;
+      this._audioContext = audioContext;
+      this._audioSource = audioSource;
+
+      this._setupAudio();
+    }
+  }
+
+  get audioContext(): AudioContext | null {
     return this._audioContext;
   }
 
