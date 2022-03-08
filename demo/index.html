@@ -91,7 +91,6 @@
           handle.start();
           document.getElementById('stop').disabled = false;
           document.getElementById('pause').disabled = false;
-          document.getElementById('resume').disabled = true;
         };
 
         document.getElementById('stop').onclick = () => {
@@ -100,21 +99,13 @@
           handle.stop();
           document.getElementById('start').disabled = false;
           document.getElementById('pause').disabled = true;
-          document.getElementById('resume').disabled = true;
-        };
-
-        document.getElementById('resume').onclick = () => {
-          document.getElementById('resume').disabled = true;
-          writeMessage('Resuming ...');
-          handle.resume();
-          document.getElementById('pause').disabled = false;
         };
 
         document.getElementById('pause').onclick = () => {
           document.getElementById('pause').disabled = true;
           writeMessage('Pausing ...');
           handle.pause();
-          document.getElementById('resume').disabled = false;
+          document.getElementById('start').disabled = false;
         };
 
       });
@@ -128,7 +119,6 @@
     <button id="stop" >Stop Recording</button>
     <button id="start" disabled>Start Recording</button>
     <button id="pause" >Pause Recording</button>
-    <button id="resume"disabled>Resume Recording</button>
     <button id="start-audio-dump" disabled>Start Audio Dump (10s)</button>
     <a href="#" style="visibility: hidden" download="recorded.wav" id="audio-download-link"
       >Download PCM in wav format</a

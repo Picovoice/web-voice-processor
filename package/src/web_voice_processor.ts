@@ -9,7 +9,7 @@
     specific language governing permissions and limitations under the License.
 */
 
-import {DownsamplingWorker, DownsamplingWorkerResponse} from './worker_types';
+import { DownsamplingWorker, DownsamplingWorkerResponse } from './worker_types';
 import DownsamplerWorkerFactory from './downsampler_worker_factory';
 
 export type WebVoiceProcessorOptions = {
@@ -74,7 +74,6 @@ export class WebVoiceProcessor {
   }
 
   private async _setupAudio(): Promise<any> {
-
     const node = this._audioContext.createScriptProcessor(4096, 1, 1);
     node.onaudioprocess = (event: AudioProcessingEvent): void => {
       if (this._isRecording) {
@@ -128,8 +127,7 @@ export class WebVoiceProcessor {
   public static async init(
     options: WebVoiceProcessorOptions,
   ): Promise<WebVoiceProcessor> {
-
-    const [microphoneStream, audioContext, audioSource, downsamplingWorker] = await this._initMic(options)
+    const [microphoneStream, audioContext, audioSource, downsamplingWorker] = await this._initMic(options);
 
     return new WebVoiceProcessor(
       microphoneStream,
@@ -162,7 +160,6 @@ export class WebVoiceProcessor {
     this._audioSource = audioSource;
 
     this._setupAudio();
-
   }
 
   /**
@@ -200,10 +197,10 @@ export class WebVoiceProcessor {
     if (!this._isReleased) {
       this._isReleased = true;
       this._isRecording = false;
-      this._downsamplingWorker.postMessage({command: 'release'});
+      this._downsamplingWorker.postMessage({ command: 'release' });
       this._downsamplingWorker.terminate();
 
-      this._mediaStream.getTracks().forEach(function(track) {
+      this._mediaStream.getTracks().forEach(function (track) {
         track.stop();
       });
 
@@ -212,19 +209,16 @@ export class WebVoiceProcessor {
   }
 
   public async stop(): Promise<void> {
-    return this.release()
+    return this.release();
   }
 
   public pause(): void {
     this._isRecording = false;
-    this._downsamplingWorker.postMessage({command: 'reset'});
-  }
-
-  public resume(): void {
-    this._isRecording = true;
+    this._downsamplingWorker.postMessage({ command: 'reset' });
   }
 
   public async start(): Promise<void> {
+    this._isRecording = true;
     if (this._isReleased) {
       this._isReleased = false;
       this._isRecording = true;
