@@ -42,11 +42,11 @@ export class WebVoiceProcessor {
   private _isReleased = false;
   private _mediaStream: MediaStream;
   private _options: WebVoiceProcessorOptions;
+  private _node:any;
 
   private static async _initMic(
     options: WebVoiceProcessorOptions,
   ): Promise<any> {
-
     // Get microphone access and ask user permission
     const microphoneStream = await navigator.mediaDevices.getUserMedia({
       audio: {
@@ -70,12 +70,12 @@ export class WebVoiceProcessor {
       audioContext,
       audioSource,
       downsamplingWorker,
-    ]
+    ];
   }
 
   private async _setupAudio(): Promise<any> {
-    const node = this._audioContext.createScriptProcessor(4096, 1, 1);
-    node.onaudioprocess = (event: AudioProcessingEvent): void => {
+    this._node = this._audioContext.createScriptProcessor(4096, 1, 1);
+    this._node.onaudioprocess = (event: AudioProcessingEvent): void => {
       if (this._isRecording) {
         this._downsamplingWorker.postMessage({
           command: 'process',
@@ -84,8 +84,8 @@ export class WebVoiceProcessor {
       }
     };
 
-    this._audioSource.connect(node);
-    node.connect(this._audioContext.destination);
+    this._audioSource.connect(this._node);
+    this._node.connect(this._audioContext.destination);
 
     this._downsamplingWorker.onmessage = (
       event: MessageEvent<DownsamplingWorkerResponse>,
@@ -203,7 +203,7 @@ export class WebVoiceProcessor {
       this._mediaStream.getTracks().forEach(function (track) {
         track.stop();
       });
-
+      this._node.disconnect();
       await this._audioContext.close();
     }
   }
@@ -222,7 +222,7 @@ export class WebVoiceProcessor {
     if (this._isReleased) {
       this._isReleased = false;
       this._isRecording = true;
-      const [microphoneStream, audioContext, audioSource, downsamplingWorker] = await WebVoiceProcessor._initMic(this._options)
+      const [microphoneStream, audioContext, audioSource, downsamplingWorker] = await WebVoiceProcessor._initMic(this._options);
 
       this._mediaStream = microphoneStream;
       this._downsamplingWorker = downsamplingWorker;
