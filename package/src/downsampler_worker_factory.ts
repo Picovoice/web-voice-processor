@@ -25,6 +25,7 @@ export default class DownsamplerWorkerFactory {
     inputFrequency: number,
     outputFrequency?: number,
     frameLength?: number,
+    filterOrder?: number,
   ): Promise<Worker> {
     const downsamplingWorker = new DsWorker() as DownsamplingWorker;
 
@@ -33,6 +34,7 @@ export default class DownsamplerWorkerFactory {
       inputSampleRate: inputFrequency,
       outputSampleRate: outputFrequency,
       frameLength: frameLength,
+      filterOrder: filterOrder,
     });
 
     const workerPromise = new Promise<Worker>((resolve, reject) => {
