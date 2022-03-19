@@ -3,40 +3,47 @@ name: Package-build
 on:
   workflow_dispatch:
   push:
-    branches: [ master ]
+    branches: [master]
     paths:
-      - 'package/**'
+      - "package/**"
+      - "lib/**"
   pull_request:
-    branches: [ master ]
+    branches: [master]
     paths:
-      - 'package/**'
-
-defaults:
-  run:
-    working-directory: package
+      - "package/**"
+      - "lib/**"
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
-    strategy:
-      matrix:
-        node-version: [lts/*]
-
     steps:
-    - uses: actions/checkout@v2
+      - uses: actions/checkout@v2
 
-    - name: Set up Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v2
-      with:
-        node-version: ${{ matrix.node-version }}
+      - name: Set up Python
+        uses: actions/setup-python@v2
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
 
-    - name: Pre-build dependencies
-      run: npm install yarn
+      - name: Install system dependencies
+        run: |
+          pip install selenium
+          pip install webdriver-manager
 
-    - name: Install dependencies
-      run: yarn install
+      - name: Pre-build dependencies
+        run: npm install yarn
 
-    - name: Build
-      run: yarn build
+      - name: Install dependencies
+        run: yarn install
+
+      - name: Generate dependencies
+        run: yarn build
+
+      - name: Build
+        run: yarn && yarn build
+        working-directory: package/
+
+      - name: Test
+        run: python3 test/selenium_test.py
+        working-directory: package/

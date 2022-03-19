@@ -40,6 +40,7 @@ class SimpleHttpServer(threading.Thread):
         self._server.socket.close()
         print(f'stopping server on port {self._server.server_port}')
 
+
 def run_unit_test_selenium(
         url,
         pcm_file,
@@ -47,23 +48,28 @@ def run_unit_test_selenium(
         input_frequency,
         output_frequency,
         filter_order
-        ):
+):
+
+    base_folder = os.path.join(os.path.dirname(__file__), '..', '..')
+    pcm_file_absolute_path = os.path.abspath(os.path.join(base_folder, 'audio', pcm_file))
+    ref_file_absolute_path =os.path.abspath(os.path.join(base_folder, 'audio', ref_file))
+
     desired_capabilities = DesiredCapabilities.CHROME
     desired_capabilities['goog:loggingPrefs'] = {'browser': 'ALL'}
     opts = Options()
     opts.headless = True
-    print("missed")
-    driver = webdriver.Chrome(ChromeDriverManager().install(), desired_capabilities=desired_capabilities, options=opts)
-    print("hello")
-    print(driver.title)
+
+    driver = webdriver.Chrome(ChromeDriverManager().install(
+    ), desired_capabilities=desired_capabilities, options=opts)
+
     driver.get(url)
 
-    wait = WebDriverWait(driver, 10)
+    wait = WebDriverWait(driver, 20)
 
-    driver.find_element_by_id("pcmFile").send_keys(pcm_file)
+    driver.find_element_by_id("pcmFile").send_keys(pcm_file_absolute_path)
     wait.until(EC.visibility_of_element_located((By.ID, "pcmFileLoaded")))
 
-    driver.find_element_by_id("refPcmFile").send_keys(pcm_file)
+    driver.find_element_by_id("refPcmFile").send_keys(ref_file_absolute_path)
     wait.until(EC.visibility_of_element_located((By.ID, "refPcmFileLoaded")))
 
     driver.find_element_by_id("filterOrder").send_keys(filter_order)
@@ -72,7 +78,7 @@ def run_unit_test_selenium(
 
     driver.find_element_by_id("submit").click()
     wait.until(EC.visibility_of_element_located((By.ID, "testComplete")))
-    print("hello")
+
     test_result = 1
     test_message = "Tests failed"
     for entry in driver.get_log('browser'):
@@ -87,47 +93,43 @@ def run_unit_test_selenium(
 
 
 def main():
-    parser = ArgumentParser()
 
-    parser.add_argument(
-        '--pcm_file',
-        required=True)
-
-    parser.add_argument(
-        '--ref_file',
-        required=True)
-
-    parser.add_argument(
-        '--input_frequency',
-        required=True)
-
-    parser.add_argument(
-        '--output_frequency',
-        required=True)
-
-    parser.add_argument(
-        '--filter_order',
-        required=True)
-
-    args = parser.parse_args()
-
-    pcm_file_absolute_path = os.path.abspath(args.pcm_file)
-    ref_file_absolute_path = os.path.abspath(args.ref_file)
-
-    simple_server = SimpleHttpServer(port=4005, path=os.path.join(os.path.dirname(__file__), '..'))
-    test_url = f'{simple_server.base_url}/test/index.html'
+    simple_server = SimpleHttpServer(
+        port=4005, path=os.path.join(os.path.dirname(__file__), '..', '..'))
+    test_url = f'{simple_server.base_url}/package/test/index.html'
     simple_server.start()
     time.sleep(10)
 
     result = 0
     try:
-        result = run_unit_test_selenium(
-        test_url,
-        pcm_file_absolute_path,
-        ref_file_absolute_path,
-        args.input_frequency,
-        args.output_frequency,
-        args.filter_order)
+        result += run_unit_test_selenium(
+            test_url,
+            '9khz_noise_48kHz.pcm',
+            '9khz_noise_16kHz_ds_30.pcm',
+            48000,
+            16000,
+            30)
+        result += run_unit_test_selenium(
+            test_url,
+            '9khz_noise_48kHz.pcm',
+            '9khz_noise_16kHz_ds_40.pcm',
+            48000,
+            16000,
+            40)
+        result += run_unit_test_selenium(
+            test_url,
+            '9khz_noise_48kHz.pcm',
+            '9khz_noise_16kHz_ds_50.pcm',
+            48000,
+            16000,
+            50)
+        result += run_unit_test_selenium(
+            test_url,
+            'tone-9khz_noise-44.1khz_mono.pcm',
+            'tone-9khz_noise-44.1khz_mono_ds_100.pcm',
+            44100,
+            16000,
+            100)
     except WebDriverException as e:
         print(e)
         result = 1

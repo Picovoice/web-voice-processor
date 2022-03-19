@@ -15,36 +15,41 @@ For more detailed information, refer to the [package's readme](package/README.md
 
 ## Build from source
 
-Go to the `package` directory. Use `yarn` or `npm` to build WebVoiceProcessor:
+### Generates base64 wasm file
+
+Use `yarn` to generate necessary files for the package:
 
 ```console
 yarn
 yarn build
 ```
 
-(or)
+### Build the package
+
+Go to the `package` directory. Use `yarn` to build WebVoiceProcessor:
 
 ```console
-npm install
-npm run-script build
+yarn
+yarn build
 ```
 
 The build script outputs minified and non-minified versions of the IIFE and ESM formats to the `dist` folder. It also will output the TypeScript type definitions.
 
+### Test the package
+
+Run the following command:
+
+```console
+python3 test/selenium_test.py
+```
+
 ## Demo
 
-Go to the `demo` directory. Use `yarn` or `npm` to install the dependencies, and the `start` script to start a local web server hosting the demo.
+Go to the `demo` directory. Use `yarn` to install the dependencies, and the `start` script to start a local web server hosting the demo.
 
 ```console
 yarn
 yarn start
-```
-
-(or)
-
-```console
-npm
-npm run start
 ```
 
 Open `localhost:5000` in your web browser, as hinted at in the output:

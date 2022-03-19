@@ -1,11 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
+  <head>
+    <title>unit test - downsampler in WebVoiceProcessor</title>
 
-<head>
-  <title>unit test - downsampler in WebVoiceProcessor</title>
-
-  <script src="../dist/iife/index.js"></script>
-  <script type="application/javascript">
+    <script src="../dist/iife/index.js"></script>
+    <script type="application/javascript">
 
       let pcm = null;
       let refPcm = null;
@@ -61,93 +60,93 @@
           const inputFrequency = parseInt(document.getElementById("inputFrequency").value);
           const outputFrequency = parseInt(document.getElementById("outputFrequency").value);
           const filterOrder = parseInt(document.getElementById("filterOrder").value);
-          //
-          // writeMessage("Starting test...");
-          //
-          // if (!pcm || !refPcm) {
-          //     writeMessage("PCM or reference PCM file not provided...");
-          //     return
-          // }
-          //
-          // let dsWorker = null;
-          // let numIteration = 0;
-          // const result = new Int16Array(frameLength * Math.floor(numOutputFrames))
-          // try {
-          //     writeMessage("wvp is loading. Please wait...");
-          //     dsWorker = await WebVoiceProcessor.DownsamplerWorkerFactory.create(
-          //         inputFrequency,
-          //         outputFrequency,
-          //         frameLength,
-          //         filterOrder);
-          //     dsWorker.onmessage = (event) => {
-          //         switch (event.data.command) {
-          //             case 'output': {
-          //                 result.set(event.data.outputFrame, numIteration * frameLength);
-          //                 if (numIteration++ === Math.floor(numOutputFrames - 1)) {
-          //                     assertEqual(result, refPcm, 5)
-          //                 }
-          //             }
-          //         }
-          //     };
-          //
-          //     writeMessage("ds worker ready!");
-          //     for (let i = 0; i < pcm.length / frameLength; i++) {
-          //         dsWorker.postMessage({
-          //             command: 'process',
-          //             inputFrame: pcm.slice(i * frameLength, (i + 1) * frameLength),
-          //         })
-          //     }
+          
+          writeMessage("Starting test...");
+          
+          if (!pcm || !refPcm) {
+              writeMessage("PCM or reference PCM file not provided...");
+              return
+          }
+          
+          let dsWorker = null;
+          let numIteration = 0;
+          const result = new Int16Array(frameLength * Math.floor(numOutputFrames))
+          try {
+              writeMessage("wvp is loading. Please wait...");
+              dsWorker = await WebVoiceProcessor.DownsamplerWorkerFactory.create(
+                  inputFrequency,
+                  outputFrequency,
+                  frameLength,
+                  filterOrder);
+              dsWorker.onmessage = (event) => {
+                  switch (event.data.command) {
+                      case 'output': {
+                          result.set(event.data.outputFrame, numIteration * frameLength);
+                          if (numIteration++ === Math.floor(numOutputFrames - 1)) {
+                              assertEqual(result, refPcm, 5)
+                          }
+                      }
+                  }
+              };
+          
+              writeMessage("ds worker ready!");
+              for (let i = 0; i < pcm.length / frameLength; i++) {
+                  dsWorker.postMessage({
+                      command: 'process',
+                      inputFrame: pcm.slice(i * frameLength, (i + 1) * frameLength),
+                  })
+              }
 
           } catch (error) {
               writeMessage(error);
               writeMessage("Test failed!");
-              // document.getElementById("testComplete").style.display = "block";
           } finally {
               document.getElementById("testComplete").style.display = "block";
-
           }
       }
-  </script>
-</head>
+    </script>
+  </head>
 
-<body>
+  <body>
+    <h1>downsampler test</h1>
 
-<h1>unit test - downsampler</h1>
+    <p>
+      <label for="pcmFile">Original PCM:</label>
+      <input type="file" id="pcmFile" name="pcmFile" />
+    </p>
 
-<p>
-  <label for="pcmFile">Original PCM:</label>
-  <input type="file" id="pcmFile" name="pcmFile"/>
-</p>
+    <p>
+      <label for="refPcmFile">Reference PCM:</label>
+      <input type="file" id="refPcmFile" name="refPcmFile" />
+    </p>
 
-<p>
-  <label for="refPcmFile">Reference PCM:</label>
-  <input type="file" id="refPcmFile" name="refPcmFile"/>
-</p>
+    <p>
+      <label for="filterOrder">Filter order:</label>
+      <input type="text" id="filterOrder" name="filterOrder" />
+    </p>
 
-<p>
-  <label for="filterOrder">Filter order:</label>
-  <input type="text" id="filterOrder" name="filterOrder"/>
-</p>
+    <p>
+      <label for="inputFrequency">Input Frequency:</label>
+      <input type="text" id="inputFrequency" name="inputFrequency" />
+    </p>
 
-<p>
-  <label for="inputFrequency">Input Frequency:</label>
-  <input type="text" id="inputFrequency" name="inputFrequency"/>
-</p>
+    <p>
+      <label for="outputFrequency">Output Frequency:</label>
+      <input type="text" id="outputFrequency" name="outputFrequency" />
+    </p>
 
-<p>
-  <label for="outputFrequency">Output Frequency:</label>
-  <input type="text" id="outputFrequency" name="outputFrequency"/>
-</p>
+    <input
+      type="button"
+      id="submit"
+      value="Test Downsampler"
+      onclick="startTest()"
+    />
 
+    <br />
 
-<input type="button" id="submit" value="Test Downsampler" onclick="startTest()"/>
-
-<br>
-
-<h4 id="pcmFileLoaded" style="display: none;">PCM file loaded!</h4>
-<h4 id="refPcmFileLoaded" style="display: none;">Ref PCM file loaded!</h4>
-<h4 id="testComplete" style="display: none;">Test Complete!</h4>
-<hr/>
-</body>
-
+    <h4 id="pcmFileLoaded" style="display: none">PCM file loaded!</h4>
+    <h4 id="refPcmFileLoaded" style="display: none">Ref PCM file loaded!</h4>
+    <h4 id="testComplete" style="display: none">Test Complete!</h4>
+    <hr />
+  </body>
 </html>
