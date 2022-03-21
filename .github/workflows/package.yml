@@ -47,4 +47,5 @@ jobs:
         working-directory: package/
 
       - name: Test
-        run: python3 package/test/selenium_test.py
+        run: python3 test/selenium_test.py
+        working-directory: package/

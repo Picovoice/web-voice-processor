@@ -42,6 +42,7 @@ class SimpleHttpServer(threading.Thread):
 
 
 def run_unit_test_selenium(
+        root_path,
         url,
         pcm_file,
         ref_file,
@@ -50,9 +51,10 @@ def run_unit_test_selenium(
         filter_order
 ):
 
-    base_folder = os.path.join(os.path.dirname(__file__), '..', '..')
-    pcm_file_absolute_path = os.path.abspath(os.path.join(base_folder, 'audio', pcm_file))
-    ref_file_absolute_path =os.path.abspath(os.path.join(base_folder, 'audio', ref_file))
+    # base_folder = os.path.join(os.path.dirname(__file__), '..', '..')
+    pcm_file_absolute_path = os.path.join(root_path, 'audio', pcm_file)
+    print(pcm_file_absolute_path)
+    ref_file_absolute_path = os.path.join(root_path, 'audio', ref_file)
 
     desired_capabilities = DesiredCapabilities.CHROME
     desired_capabilities['goog:loggingPrefs'] = {'browser': 'ALL'}
@@ -94,7 +96,7 @@ def run_unit_test_selenium(
 
 def main():
 
-    root_path = os.path.join(os.path.dirname(__file__), '..', '..')
+    root_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
     simple_server = SimpleHttpServer(
         port=4005, path=root_path)
     test_url = f'{simple_server.base_url}/package/test/index.html'
@@ -104,6 +106,7 @@ def main():
     result = 0
     try:
         result += run_unit_test_selenium(
+            root_path,
             test_url,
             '9khz_noise_48kHz.pcm',
             '9khz_noise_16kHz_ds_30.pcm',
@@ -111,6 +114,7 @@ def main():
             16000,
             30)
         result += run_unit_test_selenium(
+            root_path,
             test_url,
             '9khz_noise_48kHz.pcm',
             '9khz_noise_16kHz_ds_40.pcm',
@@ -118,6 +122,7 @@ def main():
             16000,
             40)
         result += run_unit_test_selenium(
+            root_path,
             test_url,
             '9khz_noise_48kHz.pcm',
             '9khz_noise_16kHz_ds_50.pcm',
@@ -125,6 +130,7 @@ def main():
             16000,
             50)
         result += run_unit_test_selenium(
+            root_path,
             test_url,
             'tone-9khz_noise-44.1khz_mono.pcm',
             'tone-9khz_noise-44.1khz_mono_ds_100.pcm',

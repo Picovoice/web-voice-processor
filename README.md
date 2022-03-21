@@ -37,10 +37,10 @@ The build script outputs minified and non-minified versions of the IIFE and ESM 
 
 ### Test the package
 
-For testing the output of the downsampler module, Go to the root directory first and run the following command:
+Run the following command:
 
 ```console
-python3 package/test/selenium_test.py
+python3 test/selenium_test.py
 ```
 
 ## Demo
