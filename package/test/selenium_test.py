@@ -94,8 +94,9 @@ def run_unit_test_selenium(
 
 def main():
 
+    root_path = os.path.join(os.path.dirname(__file__), '..', '..')
     simple_server = SimpleHttpServer(
-        port=4005, path=os.path.join(os.path.dirname(__file__), '..', '..'))
+        port=4005, path=root_path)
     test_url = f'{simple_server.base_url}/package/test/index.html'
     simple_server.start()
     time.sleep(10)

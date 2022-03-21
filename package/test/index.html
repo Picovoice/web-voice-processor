@@ -53,6 +53,7 @@
               }
           }
           writeMessage("Test passed!");
+          document.getElementById("testComplete").style.display = "block";
       }
 
       async function startTest() {
@@ -100,8 +101,6 @@
           } catch (error) {
               writeMessage(error);
               writeMessage("Test failed!");
-          } finally {
-              document.getElementById("testComplete").style.display = "block";
           }
       }
     </script>

@@ -5,11 +5,13 @@ on:
   push:
     branches: [master]
     paths:
+      - "audio/**"
       - "package/**"
       - "lib/**"
   pull_request:
     branches: [master]
     paths:
+      - "audio/**"
       - "package/**"
       - "lib/**"
 
@@ -37,7 +39,7 @@ jobs:
       - name: Install dependencies
         run: yarn install
 
-      - name: Generate dependencies
+      - name: Generate the package
         run: yarn build
 
       - name: Build
@@ -45,5 +47,4 @@ jobs:
         working-directory: package/
 
       - name: Test
-        run: python3 test/selenium_test.py
-        working-directory: package/
+        run: python3 package/test/selenium_test.py
