@@ -31,6 +31,7 @@ async function init(
   inputSampleRate: number,
   outputSampleRate: number = PV_SAMPLE_RATE,
   frameLength: number = PV_FRAME_LENGTH,
+  filterOrder: number = PV_FILTER_ORDER,
 ): Promise<void> {
   if (!Number.isInteger(inputSampleRate)) {
     throw new Error(
@@ -55,7 +56,7 @@ async function init(
     _downsampler = await Downsampler.create(
       inputSampleRate,
       outputSampleRate,
-      PV_FILTER_ORDER,
+      filterOrder,
       _outputframeLength,
     );
 
@@ -86,19 +87,22 @@ function startAudioDump(durationMs: number = 3000): void {
   _audioDumpBuffer = new Int16Array(_audioDumpNumFrames * _outputframeLength);
 }
 
-function processAudio(inputFrame: Float32Array): void {
-  if (inputFrame.constructor !== Float32Array) {
-    throw new Error(
-      `Invalid inputFrame type: ${typeof inputFrame}. Expected Float32Array.`,
-    );
-  }
-  const inputBuffer = new Int16Array(inputFrame.length);
-  for (let i = 0; i < inputFrame.length; i++) {
-    if (inputFrame[i] < 0) {
-      inputBuffer[i] = 0x8000 * inputFrame[i];
-    } else {
-      inputBuffer[i] = 0x7fff * inputFrame[i];
+function processAudio(inputFrame: Float32Array | Int16Array): void {
+  let inputBuffer = new Int16Array(inputFrame.length);
+  if (inputFrame.constructor === Float32Array) {
+    for (let i = 0; i < inputFrame.length; i++) {
+      if (inputFrame[i] < 0) {
+        inputBuffer[i] = 0x8000 * inputFrame[i];
+      } else {
+        inputBuffer[i] = 0x7fff * inputFrame[i];
+      }
     }
+  } else if (inputFrame.constructor === Int16Array) {
+    inputBuffer = inputFrame
+  } else {
+    throw new Error(
+        `Invalid inputFrame type: ${typeof inputFrame}. Expected Float32Array or Int16Array.`,
+    );
   }
 
   let inputBufferExtended = new Int16Array(
@@ -176,6 +180,7 @@ onmessage = function (event: MessageEvent<DownsamplingWorkerRequest>): void {
         event.data.inputSampleRate,
         event.data.outputSampleRate,
         event.data.frameLength,
+        event.data.filterOrder,
       );
       break;
     case 'process':

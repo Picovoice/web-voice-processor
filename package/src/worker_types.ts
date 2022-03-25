@@ -15,7 +15,7 @@ export type WorkerRequestVoid = {
 
 export type DownsamplingWorkerRequestProcess = {
   command: 'process';
-  inputFrame: Float32Array;
+  inputFrame: Float32Array | Int16Array;
 };
 
 export type DownsamplingWorkerRequestInit = {
@@ -23,6 +23,7 @@ export type DownsamplingWorkerRequestInit = {
   inputSampleRate: number;
   outputSampleRate?: number;
   frameLength?: number;
+  filterOrder?: number;
 };
 
 export type DownsamplingWorkerResponseReady = {
