@@ -15,6 +15,41 @@ declare const self: ServiceWorkerGlobalScope;
 import { DownsamplerWorkerRequest } from './types';
 import Downsampler from './downsampler';
 
+class BufferAccumulator {
+  private readonly _frameLength: number;
+  private readonly _buffer: Int16Array;
+
+  private _copied: number;
+
+  constructor(frameLength = 512) {
+    this._frameLength = frameLength;
+    this._buffer = new Int16Array(frameLength);
+    this._copied = 0;
+  }
+
+  public process(frames: Int16Array): void {
+    let remaining = frames.length;
+
+    while (remaining > 0) {
+      const toCopy = Math.min(remaining, this._frameLength - this._copied);
+      this._buffer.set(frames.slice(0, toCopy), this._copied);
+
+      frames = frames.slice(toCopy, frames.length);
+      remaining -= toCopy;
+      this._copied += toCopy;
+
+      if (this._copied >= this._frameLength) {
+        self.postMessage({
+          command: 'ok',
+          result: this._buffer,
+        });
+        this._copied = 0;
+      }
+    }
+  }
+}
+
+let accumulator: BufferAccumulator | null = null;
 let downsampler: Downsampler | null = null;
 onmessage = async function(event: MessageEvent<DownsamplerWorkerRequest>): Promise<void> {
   switch (event.data.command) {
@@ -34,6 +69,7 @@ onmessage = async function(event: MessageEvent<DownsamplerWorkerRequest>): Promi
           event.data.filterOrder,
           event.data.frameLength,
         );
+        accumulator = new BufferAccumulator(event.data.frameLength);
         self.postMessage({
           command: 'ok',
           version: downsampler.version,
@@ -55,17 +91,13 @@ onmessage = async function(event: MessageEvent<DownsamplerWorkerRequest>): Promi
       }
       try {
         const { inputFrame } = event.data;
-        let outputBuffer = new Int16Array(inputFrame.length);
+        const outputBuffer = new Int16Array(inputFrame.length);
         const processed = downsampler.process(
           inputFrame,
           inputFrame.length,
           outputBuffer,
         );
-        outputBuffer = outputBuffer.slice(0, processed);
-        self.postMessage({
-          command: 'ok',
-          result: outputBuffer,
-        }, [outputBuffer.buffer]);
+        accumulator?.process(outputBuffer.slice(0, processed));
       } catch (e: any) {
         self.postMessage({
           command: 'error',
@@ -96,6 +128,8 @@ onmessage = async function(event: MessageEvent<DownsamplerWorkerRequest>): Promi
         return;
       }
       downsampler.release();
+      downsampler = null;
+      accumulator = null;
       self.postMessage({
         command: 'ok',
       });
