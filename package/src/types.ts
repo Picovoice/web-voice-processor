@@ -24,8 +24,6 @@ export type PvEngine = {
 }
 
 export type WebVoiceProcessorOptions = {
-  /** Recorder number of channels (default: 1) */
-  numberOfChannels?: number;
   /** Size of pcm frames (default: 512) */
   frameLength?: number;
   /** Which sample rate to convert to (default: 16000) */

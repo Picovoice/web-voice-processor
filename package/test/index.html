@@ -77,9 +77,9 @@
                   inputFrequency,
                   outputFrequency,
                   filterOrder,
-                  frameLength);
-              const result = await dsWorker.process(pcm);
-              assertEqual(result, refPcm, 10);
+                  pcm.length);
+            let result = await dsWorker.process(pcm);
+            assertEqual(result, refPcm, 5);
           } catch (error) {
               writeMessage(error);
               writeMessage("Test failed!");

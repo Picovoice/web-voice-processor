@@ -55,10 +55,6 @@ window.WebVoiceProcessor.browserCompatibilityCheck();
 - 'webKitGetUserMedia' (legacy predecessor to getUserMedia)
 - 'Worker' (required for downsampling and for all engine processing)
 
-### AudioWorklet & Safari
-
-This library does _not_ use the modern [AudioWorklet](https://developer.mozilla.org/en-US/docs/Web/API/AudioWorklet) due to lack of support in Safari and Safari Mobile.
-
 ## Installation
 
 ```console
@@ -91,70 +87,80 @@ The IIFE version of the library adds `WebVoiceProcessor` to the `window` global 
 
 ### Start listening
 
-Start up the WebVoiceProcessor with the `init` async static factory method:
+Get the WebVoiceProcessor with the `instance` async static method. This will return the singleton instance:
 
 ```javascript
-let engines = []; // list of voice processing web workers (see below)
-let handle = await WebVoiceProcessor.WebVoiceProcessor.init({
-  engines: engines,
-});
+let options = {
+  frameLength: 512,
+  outputSampleRate: 16000,
+  deviceId: null,
+  filterOrder: 50,
+  vuMeterCallback: undefined,
+}; // optional options
+
+let handle = await WebVoiceProcessor.WebVoiceProcessor.instance(options);
 ```
 
-This is async due to its [Web Audio API microphone request](https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia). The promise will be rejected if the user refuses permission, no suitable devices are found, etc. Your calling code should anticipate the possibility of rejection. When the promise resolves, the WebVoiceProcessor instance is ready.
+WebVoiceProcessor follows the subscribe/unsubscribe pattern. Every engine that is subscribed will be receiving audio
+frames as soon as it is ready:
 
-`engines` is an array of voice processing [Web Workers](<(https://developer.mozilla.org/en-US/docs/Web/API/Worker)>)
+```javascript
+const worker = new Worker('${WORKER_PATH}');
+const engine = {
+  onmessage: function(e) {
+    /// ... handle inputFrame
+  }
+}
+
+handle.subscribe(engine);
+handle.subscribe(worker);
+
+handle.unsubscribe(engine);
+handle.unsubscribe(worker);
+```
+
+An `engine` is either a [Web Workers](<(https://developer.mozilla.org/en-US/docs/Web/API/Worker)>) or an object
 implementing the following interface within their `onmessage` method:
 
 ```javascript
 onmessage = function (e) {
     switch (e.data.command) {
-
-        ...
-
         case 'process':
             process(e.data.inputFrame);
             break;
-
-        ...
-
     }
 };
 ```
 
-where `e.data.inputFrame` is an `Int16Array` of 512 audio samples.
+where `e.data.inputFrame` is an `Int16Array` of `frameLength` audio samples.
 
-If you wish to initialize a new WebVoiceProcessor, and not immediately start listening, include `start: false` in the init options object argument; then call `start()` on the instance when ready.
+For examples of using engines, look at [src/engines](/package/src/engines).
+
+To start recording, call `start` after getting the instance. This will start the Audio Context, get microphone permissions
+and start recording.
 
 ```javascript
-const handle = await WebVoiceProcessor.WebVoiceProcessor.init({
-  engines: engines,
-  start: false,
-});
-handle.start();
+await handle.start();
 ```
 
-### Stop listening
+This is async due to its [Web Audio API microphone request](https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia). The promise will be rejected if the user refuses permission, no suitable devices are found, etc. Your calling code should anticipate the possibility of rejection. When the promise resolves, the WebVoiceProcessor is running.
+
+### Pause listening
 
 Pause processing (microphone and Web Audio context will still be active):
 
 ```javascript
-handle.pause();
-handle.resume();
+await handle.pause();
 ```
 
-Close the microphone [MediaStream](https://developer.mozilla.org/en-US/docs/Web/API/MediaStream) and stop prcessing:
+### Stop Listening
+
+Close the microphone [MediaStream](https://developer.mozilla.org/en-US/docs/Web/API/MediaStream). This will free all
+used resources including microphone's resources and audio context.
 
 ```javascript
-handle.stop();
+await handle.stop();
 ```
-
-Release resources and stop all activities:
-
-```javascript
-handle.release();
-```
-
-This method is async as it is closing the [AudioContext](https://developer.mozilla.org/en-US/docs/Web/API/AudioContext) internally.
 
 ## Build from source
 

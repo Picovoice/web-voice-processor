@@ -33,6 +33,7 @@ type DownsamplerWasmOutput = {
   pvDownsamplerProcess: pv_downsampler_process;
   pvDownsamplerReset: pv_downsampler_reset;
   pvDownsamplerDelete: pv_downsampler_delete;
+  frameLength: number;
   version: string;
 };
 
@@ -49,6 +50,8 @@ class Downsampler {
   private _wasmMemory: WebAssembly.Memory;
   private _memoryBuffer: Int16Array;
   private _memoryBufferView: DataView;
+
+  private readonly _frameLength: number;
 
   private static _wasm: string;
   public static _version: string;
@@ -69,6 +72,8 @@ class Downsampler {
 
     this._memoryBuffer = new Int16Array(handleWasm.memory.buffer);
     this._memoryBufferView = new DataView(handleWasm.memory.buffer);
+
+    this._frameLength = handleWasm.frameLength;
   }
 
   public static setWasm(wasm: string): void {
@@ -213,6 +218,7 @@ class Downsampler {
       pvDownsamplerProcess: pvDownsamplerProcess,
       pvDownsamplerReset: pvDownsamplerReset,
       pvDownsamplerDelete: pvDownsamplerDelete,
+      frameLength: frameLength,
       version: version,
     };
   }
@@ -222,6 +228,13 @@ class Downsampler {
     inputBufferSize: number,
     outputBuffer: Int16Array,
   ): number {
+    if (inputFrame.length > this._frameLength) {
+      throw new Error(`InputFrame length '${inputFrame.length}' must be smaller than ${this._frameLength}.`);
+    }
+    if (inputBufferSize > this._frameLength) {
+      inputBufferSize = this._frameLength;
+    }
+
     let inputBuffer = new Int16Array(inputFrame.length);
     if (inputFrame.constructor === Float32Array) {
       for (let i = 0; i < inputFrame.length; i++) {

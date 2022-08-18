@@ -34,9 +34,9 @@ export class WebVoiceProcessor {
   private _downsamplerWorker: DownsamplerWorker | null = null;
 
   private readonly _engines: Set<PvEngine>;
-  private readonly _options: WebVoiceProcessorOptions;
+  private _options: WebVoiceProcessorOptions;
 
-  private readonly _vuMeterCallback?: (dB: number) => void;
+  private _vuMeterCallback?: (dB: number) => void;
   private _vuMeterWorker?: Worker;
 
   private static _instance: WebVoiceProcessor | undefined;
@@ -48,16 +48,19 @@ export class WebVoiceProcessor {
   }
 
   /**
-   * Gets or create a WebVoiceProcessor singleton instance.
+   * Gets the WebVoiceProcessor singleton instance.
    *
    * @param options Startup options.
    * @return WebVoiceProcessor singleton.
    */
-  public static async init(
+  public static async instance(
     options: WebVoiceProcessorOptions = {},
   ): Promise<WebVoiceProcessor> {
     if (!this._instance) {
       this._instance = new WebVoiceProcessor(options);
+    } else {
+      this._instance._options = options;
+      this._instance._vuMeterCallback = options.vuMeterCallback;
     }
     return this._instance;
   }
@@ -226,12 +229,13 @@ export class WebVoiceProcessor {
     options: WebVoiceProcessorOptions,
   ) {
     const {
-      numberOfChannels = 1,
       outputSampleRate = 16000,
       frameLength = 512,
       deviceId = null,
       filterOrder = 50,
     } = options;
+    const numberOfChannels = 1;
+
     const audioContext = new AudioContext();
 
     // Get microphone access and ask user permission
