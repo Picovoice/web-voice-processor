@@ -207,7 +207,6 @@ export class WebVoiceProcessor {
     }
 
     const inputFrame = await this._downsamplerWorker.process(inputFrames[0]);
-    console.log(inputFrame);
     for (const engine of this._engines) {
       if (engine.worker && engine.worker.postMessage) {
         engine.worker.postMessage({
