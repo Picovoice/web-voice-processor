@@ -32,8 +32,9 @@ class BufferAccumulator {
 
     while (remaining > 0) {
       const toCopy = Math.min(remaining, this._frameLength - this._copied);
-      this._buffer.set(frames.slice(frames.length - remaining, (frames.length - remaining) + toCopy), this._copied);
+      this._buffer.set(frames.slice(0, toCopy), this._copied);
 
+      frames = frames.slice(toCopy, frames.length);
       remaining -= toCopy;
       this._copied += toCopy;
 
