@@ -1,4 +1,5 @@
-node_modules
 .idea
-package/src/downsampler_b64.ts
+node_modules
 .DS_Store
+dist
+package-lock.json

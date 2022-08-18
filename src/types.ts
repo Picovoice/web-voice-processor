@@ -32,7 +32,7 @@ export type WebVoiceProcessorOptions = {
   deviceId?: string | null;
   /** Filter order (default: 50) */
   filterOrder?: number
-  /** Vu meter callback (default: undefined) */
+  /** VU meter callback (default: undefined) */
   vuMeterCallback?: (dB: number) => void;
 };
 

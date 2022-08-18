@@ -11,53 +11,171 @@ A library for real-time voice processing in web browsers.
 - Converts the microphone sampling rate to 16kHz, the _de facto_ standard for voice processing engines.
 - Provides a flexible interface to pass in arbitrary voice processing workers.
 
-For more detailed information, refer to the [package's readme](package/README.md).
+- [Web Voice Processor](#web-voice-processor)
+  - [Browser compatibility](#browser-compatibility)
+    - [Browser features](#browser-features)
+    - [AudioWorklet & Safari](#audioworklet---safari)
+  - [Installation](#installation)
+  - [How to use](#how-to-use)
+    - [Via ES Modules (Create React App, Angular, Webpack, etc.)](#via-es-modules--create-react-app--angular--webpack--etc-)
+    - [Via HTML script tag](#via-html-script-tag)
+    - [Start listening](#start-listening)
+    - [Stop listening](#stop-listening)
+  - [Build from source](#build-from-source)
+
+## Browser compatibility
+
+All modern browsers (Chrome/Edge/Opera, Firefox, Safari) are supported, including on mobile. Internet Explorer is _not_ supported.
+
+Using the Web Audio API requires a secure context (HTTPS connection), with the exception of `localhost`, for local development.
+
+This library includes the utility function `browserCompatibilityCheck` which can be used to perform feature detection on the current browser and return an object
+indicating browser capabilities.
+
+ESM:
+
+```javascript
+import { browserCompatibilityCheck } from '@picovoice/web-voice-processor';
+browserCompatibilityCheck();
+```
+
+IIFE:
+
+```javascript
+window.WebVoiceProcessor.browserCompatibilityCheck();
+```
+
+### Browser features
+
+- '\_picovoice' : whether all Picovoice requirements are met
+- 'AudioWorklet' (not currently used; intended for the future)
+- 'isSecureContext' (required for microphone permission for non-localhost)
+- 'mediaDevices' (basis for microphone enumeration / access)
+- 'WebAssembly' (required for all Picovoice engines)
+- 'webKitGetUserMedia' (legacy predecessor to getUserMedia)
+- 'Worker' (required for downsampler and for all engine processing)
+
+## Installation
+
+```console
+npm install @picovoice/web-voice-processor
+```
+
+(or)
+
+```console
+yarn add @picovoice/web-voice-processor
+```
+
+## How to use
+
+### Via ES Modules (Create React App, Angular, Webpack, etc.)
+
+```javascript
+import { WebVoiceProcessor } from '@picovoice/web-voice-processor';
+```
+
+### Via HTML script tag
+
+Add the following to your HTML:
+
+```html
+<script src="@picovoice/web-voice-processor/dist/iife/index.js"></script>
+```
+
+The IIFE version of the library adds `WebVoiceProcessor` to the `window` global scope.
+
+### Start listening
+
+Get the WebVoiceProcessor with the `instance` async static method. This will return the singleton instance:
+
+```javascript
+let options = {
+  frameLength: 512,
+  outputSampleRate: 16000,
+  deviceId: null,
+  filterOrder: 50,
+  vuMeterCallback: undefined,
+}; // optional options
+
+let handle = await WebVoiceProcessor.WebVoiceProcessor.instance(options);
+```
+
+WebVoiceProcessor follows the subscribe/unsubscribe pattern. Every engine that is subscribed will be receiving audio
+frames as soon as it is ready:
+
+```javascript
+const worker = new Worker('${WORKER_PATH}');
+const engine = {
+  onmessage: function(e) {
+    /// ... handle inputFrame
+  }
+}
+
+handle.subscribe(engine);
+handle.subscribe(worker);
+
+handle.unsubscribe(engine);
+handle.unsubscribe(worker);
+```
+
+An `engine` is either a [Web Workers](<(https://developer.mozilla.org/en-US/docs/Web/API/Worker)>) or an object
+implementing the following interface within their `onmessage` method:
+
+```javascript
+onmessage = function (e) {
+    switch (e.data.command) {
+        case 'process':
+            process(e.data.inputFrame);
+            break;
+    }
+};
+```
+
+where `e.data.inputFrame` is an `Int16Array` of `frameLength` audio samples.
+
+For examples of using engines, look at [src/engines](/package/src/engines).
+
+To start recording, call `start` after getting the instance. This will start the Audio Context, get microphone permissions
+and start recording.
+
+```javascript
+await handle.start();
+```
+
+This is async due to its [Web Audio API microphone request](https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia). The promise will be rejected if the user refuses permission, no suitable devices are found, etc. Your calling code should anticipate the possibility of rejection. When the promise resolves, the WebVoiceProcessor is running.
+
+### Pause listening
+
+Pause processing (microphone and Web Audio context will still be active):
+
+```javascript
+await handle.pause();
+```
+
+### Stop Listening
+
+Close the microphone [MediaStream](https://developer.mozilla.org/en-US/docs/Web/API/MediaStream). This will free all
+used resources including microphone's resources and audio context.
+
+```javascript
+await handle.stop();
+```
 
 ## Build from source
 
-### Generates base64 wasm file
-
-Use `yarn` to generate necessary files for the package:
+Use `yarn` or `npm` to build WebVoiceProcessor:
 
 ```console
 yarn
 yarn build
 ```
 
-### Build the package
-
-Go to the `package` directory. Use `yarn` to build WebVoiceProcessor:
+(or)
 
 ```console
-yarn
-yarn build
+npm install
+npm run-script build
 ```
 
 The build script outputs minified and non-minified versions of the IIFE and ESM formats to the `dist` folder. It also will output the TypeScript type definitions.
-
-### Test the package
-
-Run the following command:
-
-```console
-python3 test/selenium_test.py
-```
-
-## Demo
-
-Go to the `demo` directory. Use `yarn` to install the dependencies, and the `start` script to start a local web server hosting the demo.
-
-```console
-yarn
-yarn start
-```
-
-Open `localhost:5000` in your web browser, as hinted at in the output:
-
-```console
-Available on:
-  http://localhost:5000
-Hit CTRL-C to stop the server
-```
-
-You will see the VU meter responding to microphone volume in real time.

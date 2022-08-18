@@ -2,7 +2,7 @@
 # yarn lockfile v1
 
 
-"@picovoice/web-voice-processor@../package":
+"@picovoice/web-voice-processor@../":
   version "2.3.0"
 
 async@^2.6.2:
