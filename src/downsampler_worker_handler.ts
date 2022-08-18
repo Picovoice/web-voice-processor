@@ -48,7 +48,7 @@ class BufferAccumulator {
   }
 }
 
-const accumulator = new BufferAccumulator();
+let accumulator: BufferAccumulator | null = null;
 let downsampler: Downsampler | null = null;
 onmessage = async function(event: MessageEvent<DownsamplerWorkerRequest>): Promise<void> {
   switch (event.data.command) {
@@ -68,6 +68,7 @@ onmessage = async function(event: MessageEvent<DownsamplerWorkerRequest>): Promi
           event.data.filterOrder,
           event.data.frameLength,
         );
+        accumulator = new BufferAccumulator(event.data.frameLength);
         self.postMessage({
           command: 'ok',
           version: downsampler.version,
@@ -95,7 +96,7 @@ onmessage = async function(event: MessageEvent<DownsamplerWorkerRequest>): Promi
           inputFrame.length,
           outputBuffer,
         );
-        accumulator.process(outputBuffer.slice(0, processed));
+        accumulator?.process(outputBuffer.slice(0, processed));
       } catch (e: any) {
         self.postMessage({
           command: 'error',
@@ -126,6 +127,8 @@ onmessage = async function(event: MessageEvent<DownsamplerWorkerRequest>): Promi
         return;
       }
       downsampler.release();
+      downsampler = null;
+      accumulator = null;
       self.postMessage({
         command: 'ok',
       });
