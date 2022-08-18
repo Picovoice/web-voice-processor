@@ -158,11 +158,15 @@ export class WebVoiceProcessor {
   public async stop(): Promise<void> {
     if (this._audioContext !== null && this._audioContext.state !== "closed") {
       this._downsamplerWorker?.terminate();
-      this._vuMeterWorker?.terminate();
       this._microphoneStream?.getAudioTracks().forEach(track => {
         track.stop();
       });
       await this._audioContext.close();
+
+      if (this._vuMeterWorker) {
+        this.unsubscribe(this._vuMeterWorker);
+        this._vuMeterWorker.terminate();
+      }
     }
   }
 
