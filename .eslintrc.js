@@ -12,9 +12,10 @@ module.exports = {
     ecmaVersion: 2018
   },
 
+  ignorePatterns: ['**/*.js', 'node_modules', 'dist'],
   overrides: [
     {
-      files: ['**/*.ts', '**/*.tsx'],
+      files: ['src/**/*.ts'],
       extends: ['plugin:@typescript-eslint/recommended'],
       rules: {
         '@typescript-eslint/no-parameter-properties': 2,
@@ -24,8 +25,9 @@ module.exports = {
         '@typescript-eslint/no-use-before-define': 2,
         '@typescript-eslint/camelcase': 0,
         '@typescript-eslint/no-empty-interface': 2,
-        '@typescript-eslint/explicit-function-return-type': 2,
-        '@typescript-eslint/ban-ts-ignore': 0,
+        '@typescript-eslint/explicit-function-return-type': 1,
+        '@typescript-eslint/ban-ts-comment': 0,
+        '@typescript-eslint/no-empty-function': [2, { "allow": ["constructors"] }],
         '@typescript-eslint/no-inferrable-types': [
           2,
           {
@@ -43,11 +45,11 @@ module.exports = {
     //=========================================================================
 
     // disallow trailing commas in object literals
-    'comma-dangle': [2, 'always-multiline'], //TODO: need discussion
+    'comma-dangle': [0, 'always-multiline'],
     // disallow assignment in conditional expressions
     'no-cond-assign': [2, 'always'],
     // disallow use of console
-    'no-console': 0,
+    'no-console': 1,
     // disallow use of constant expressions in conditions
     'no-constant-condition': [2, { checkLoops: false }],
     // disallow control characters in regular expressions
@@ -96,7 +98,7 @@ module.exports = {
     'use-isnan': 2,
     // ensure JSDoc comments are valid
     'valid-jsdoc': [
-      2,
+      0,
       {
         requireReturn: false,
         requireReturnDescription: false
@@ -121,7 +123,7 @@ module.exports = {
     // require default case in switch statements
     'default-case': 2,
     // encourages use of dot notation whenever possible
-    'dot-notation': [0, { allowKeywords: true }],
+    'dot-notation': [2, { allowKeywords: true }],
     // enforces consistent newlines before or after dots
     'dot-location': [2, 'property'],
     // require the use of === and !==
@@ -186,7 +188,7 @@ module.exports = {
     // disallow use of (old style) octal literals
     'no-octal': 2,
     // disallow reassignment of function parameters
-    'no-param-reassign': 2,
+    'no-param-reassign': 1,
     // disallow use of process.env
     'no-process-env': 2,
     // disallow usage of __proto__ property
@@ -257,7 +259,7 @@ module.exports = {
     // disallow declaration of variables that are not used in the code
     'no-unused-vars': [1, { vars: 'local', args: 'after-used' }],
     // disallow use of variables before they are defined
-    'no-use-before-define': 2,
+    'no-use-before-define': 0,
 
     //=========================================================================
     //==================== Node.js ============================================
@@ -383,7 +385,7 @@ module.exports = {
     // require quotes around object literal property names
     'quote-props': 0,
     // specify whether double or single quotes should be used
-    quotes: [1, 'single', 'avoid-escape'],
+    quotes: 0,
     // Require JSDoc comment
     'require-jsdoc': 0,
     // enforce spacing before and after semicolons

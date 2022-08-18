@@ -2,19 +2,10 @@
 # yarn lockfile v1
 
 
-"@babel/runtime@^7.12.18":
-  version "7.14.0"
-  resolved "https://registry.yarnpkg.com/@babel/runtime/-/runtime-7.14.0.tgz#46794bc20b612c5f75e62dd071e24dfd95f1cbe6"
-  integrity sha512-JELkvo/DlpNdJ7dlyw/eY7E0suy5i5GQH+Vlxaq1nsNJ+H7f4Vtv3jMeCEgRhZZQFXTjldYfQgv2qmM6M1v5wA==
-  dependencies:
-    regenerator-runtime "^0.13.4"
-
-"@picovoice/web-voice-processor@^2.2.2":
-  version "2.2.2"
-  resolved "https://registry.yarnpkg.com/@picovoice/web-voice-processor/-/web-voice-processor-2.2.2.tgz#dcaa18349e2539bb33555532ea0d172b2bf6ba7a"
-  integrity sha512-66DuOQiaZX2OYgBq0+8qJ3r964ai5ebhJkv07SdJudmrSGu/1cCocjt0plMlOkLTWO8SL2J41JZraRf2lSdnDw==
-  dependencies:
-    "@babel/runtime" "^7.12.18"
+"@picovoice/web-voice-processor@^2.3.0":
+  version "2.3.0"
+  resolved "https://registry.yarnpkg.com/@picovoice/web-voice-processor/-/web-voice-processor-2.3.0.tgz#b6ac1654ce29aba5cd21bcc8141dd33077765eb1"
+  integrity sha512-O+OSJIHfCQh69dbLLni9Agju7XNi0Ai0JFjtT0vSZ4IXFqWAXIXCRwdYjEoiH/qqYDvciWpzmWNymeuHx+9Nnw==
 
 async@^2.6.2:
   version "2.6.3"
@@ -190,11 +181,6 @@ qs@^6.4.0:
   integrity sha512-M528Hph6wsSVOBiYUnGf+K/7w0hNshs/duGsNXPUCLH5XAqjEtiPGwNONLV0tBH8NoGb0mvD5JubnUTrujKDTg==
   dependencies:
     side-channel "^1.0.4"
-
-regenerator-runtime@^0.13.4:
-  version "0.13.7"
-  resolved "https://registry.yarnpkg.com/regenerator-runtime/-/regenerator-runtime-0.13.7.tgz#cac2dacc8a1ea675feaabaeb8ae833898ae46f55"
-  integrity sha512-a54FxoJDIr27pgf7IgeQGxmqUNYrcV338lf/6gH456HZ/PhX+5BcwHXG9ajESmwe6WRO0tAzRUrRmNONWgkrew==
 
 requires-port@^1.0.0:
   version "1.0.0"

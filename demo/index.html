@@ -22,27 +22,24 @@
     <script src="node_modules/@picovoice/web-voice-processor/dist/iife/index.js"></script>
     <script src="node_modules/wavefile/dist/wavefile.js"></script>
     <script type="application/javascript">
-      var handle;
+      let handle;
 
       document.addEventListener('DOMContentLoaded', function () {
         console.log('DOMContentLoaded');
-        var vuWorkerEngine = new Worker('./vu_worker_engine.js');
-        var vuBar = document.getElementById('audio-rms-level');
+        let vuBar = document.getElementById('audio-rms-level');
 
-        vuWorkerEngine.onmessage = function (message) {
-          var pct = message.data;
-
+        function vuMeterCallback(dB) {
           const MIN_DB = -60;
-          pct = (Math.max(pct, MIN_DB) * 100) / -MIN_DB + 100;
+          let pct = (Math.max(dB, MIN_DB) * 100) / -MIN_DB + 100;
 
-          var cssPercentage = pct + '%';
+          let cssPercentage = pct + '%';
           vuBar.style.width = cssPercentage;
-        };
+        }
 
         function writeMessage(message) {
           console.log(message);
-          var p = document.createElement('p');
-          var text = document.createTextNode(message);
+          let p = document.createElement('p');
+          let text = document.createTextNode(message);
           p.appendChild(text);
           document.body.appendChild(p);
         }
@@ -51,12 +48,12 @@
           'WebVoiceProcessor is initializing & awaiting the result of microphone permissions ...',
         );
 
-        window.WebVoiceProcessor.WebVoiceProcessor.init({ engines: [vuWorkerEngine], start:true })
-          .then(webvp => {
+        window.WebVoiceProcessor.WebVoiceProcessor.instance({
+          vuMeterCallback
+        }).then(webvp => {
             handle = webvp;
-            document.getElementById('start-audio-dump').disabled = false;
             writeMessage('WebVoiceProcessor ready.');
-            window.demoWebVp = webvp
+            window.demoWebVp = webvp;
           })
           .catch(error => {
             writeMessage('Error initializing WebVoiceProcessor: ' + error);
@@ -64,9 +61,9 @@
 
         document.getElementById('start-audio-dump').onclick = () => {
           writeMessage('Starting Audio dump ...');
-          var blobPromise = handle.audioDump(10000);
+          let blobPromise = handle.audioDump(10000);
           document.getElementById('start-audio-dump').disabled = true;
-          var downloadLink = document.getElementById('audio-download-link');
+          let downloadLink = document.getElementById('audio-download-link');
           downloadLink.style.visibility = 'hidden';
 
           blobPromise.then(blob => {
@@ -91,14 +88,16 @@
           handle.start();
           document.getElementById('stop').disabled = false;
           document.getElementById('pause').disabled = false;
+          document.getElementById('start-audio-dump').disabled = false;
         };
 
         document.getElementById('stop').onclick = () => {
           document.getElementById('stop').disabled = true;
-          writeMessage('Stoping ...');
+          writeMessage('Stopping ...');
           handle.stop();
           document.getElementById('start').disabled = false;
           document.getElementById('pause').disabled = true;
+          document.getElementById('start-audio-dump').disabled = true;
         };
 
         document.getElementById('pause').onclick = () => {
@@ -106,6 +105,7 @@
           writeMessage('Pausing ...');
           handle.pause();
           document.getElementById('start').disabled = false;
+          document.getElementById('start-audio-dump').disabled = true;
         };
 
       });
@@ -116,9 +116,9 @@
     <div id="vu-meter">
       <div id="audio-rms-level">&nbsp;</div>
     </div>
-    <button id="stop" >Stop Recording</button>
-    <button id="start" disabled>Start Recording</button>
-    <button id="pause" >Pause Recording</button>
+    <button id="stop" disabled>Stop Recording</button>
+    <button id="start">Start Recording</button>
+    <button id="pause" disabled>Pause Recording</button>
     <button id="start-audio-dump" disabled>Start Audio Dump (10s)</button>
     <a href="#" style="visibility: hidden" download="recorded.wav" id="audio-download-link"
       >Download PCM in wav format</a
