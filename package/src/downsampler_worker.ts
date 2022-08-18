@@ -12,7 +12,8 @@
 import DsWorker from 'web-worker:./downsampler_worker_handler.ts';
 
 import {
-  DownsamplerWorkerInitResponse, DownsamplerWorkerNumRequiredInputSamplesResponse,
+  DownsamplerWorkerInitResponse,
+  DownsamplerWorkerNumRequiredInputSamplesResponse,
   DownsamplerWorkerProcessResponse,
   DownsamplerWorkerReleaseResponse,
   DownsamplerWorkerResetResponse,

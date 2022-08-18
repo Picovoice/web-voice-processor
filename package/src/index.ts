@@ -18,4 +18,5 @@ export {
   WebVoiceProcessorOptions,
   browserCompatibilityCheck,
   WebVoiceProcessor,
+  DownsamplerWorker,
 };

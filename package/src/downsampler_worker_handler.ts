@@ -9,6 +9,9 @@
     specific language governing permissions and limitations under the License.
 */
 
+// @ts-ignore
+declare const self: ServiceWorkerGlobalScope;
+
 import { DownsamplerWorkerRequest } from './types';
 import Downsampler from './downsampler';
 
@@ -62,7 +65,6 @@ onmessage = async function(event: MessageEvent<DownsamplerWorkerRequest>): Promi
         self.postMessage({
           command: 'ok',
           result: outputBuffer,
-          // @ts-ignore
         }, [outputBuffer.buffer]);
       } catch (e: any) {
         self.postMessage({
@@ -121,7 +123,7 @@ onmessage = async function(event: MessageEvent<DownsamplerWorkerRequest>): Promi
     default:
       // @ts-ignore
       // eslint-disable-next-line no-console
-      console.warn(`Unhandled message in downsampling_worker.ts: ${event.data.command}`);
+      console.warn(`Unhandled message in downsampler_worker.ts: ${event.data.command}`);
       break;
   }
 };

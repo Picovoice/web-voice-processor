@@ -19,8 +19,8 @@ const process = (frames: Int16Array): number => {
     (accumulator, frame) => accumulator + frame ** 2,
     0,
   );
-  const rms = Math.sqrt(sum / frames.length) / INT_16_MAX;
-  return 20 * Math.log10(Math.max(rms, EPSILON));
+  const rms = (sum / frames.length) / INT_16_MAX / INT_16_MAX;
+  return 10 * Math.log10(Math.max(rms, EPSILON));
 };
 
 onmessage = (e: MessageEvent<WvpMessageEvent>): void => {

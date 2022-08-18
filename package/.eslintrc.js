@@ -45,7 +45,7 @@ module.exports = {
     //=========================================================================
 
     // disallow trailing commas in object literals
-    'comma-dangle': [0, 'always-multiline'], //TODO: need discussion
+    'comma-dangle': [0, 'always-multiline'],
     // disallow assignment in conditional expressions
     'no-cond-assign': [2, 'always'],
     // disallow use of console

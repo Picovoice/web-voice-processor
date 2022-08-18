@@ -17,10 +17,10 @@ import { wasiSnapshotPreview1Emulator } from './wasi_snapshot';
 const PV_STATUS_SUCCESS = 10000;
 
 type pv_downsampler_convert_num_samples_to_input_sample_rate_type = (objectAddress: number, frameLength: number) => number;
-type pv_downsampler_init = (inputFrequency: number, outputFrequency: number, order: number, objectAddressAddress: number) => number;
-type pv_downsampler_process = (objectAddress: number, inputBufferAddress: number, inputBufferSize: number, outputBufferAddress: number) => number;
-type pv_downsampler_reset = (objectAddress: number) => void;
-type pv_downsampler_delete = (objectAddress: number) => number;
+type pv_downsampler_init_type = (inputFrequency: number, outputFrequency: number, order: number, objectAddressAddress: number) => number;
+type pv_downsampler_process_type = (objectAddress: number, inputBufferAddress: number, inputBufferSize: number, outputBufferAddress: number) => number;
+type pv_downsampler_reset_type = (objectAddress: number) => void;
+type pv_downsampler_delete_type = (objectAddress: number) => number;
 
 type DownsamplerWasmOutput = {
   inputBufferAddress: number;
@@ -29,19 +29,19 @@ type DownsamplerWasmOutput = {
   objectAddress: number;
   outputBufferAddress: number;
   pvDownsamplerConvertNumSamplesToInputSampleRate: pv_downsampler_convert_num_samples_to_input_sample_rate_type;
-  pvDownsamplerInit: pv_downsampler_init;
-  pvDownsamplerProcess: pv_downsampler_process;
-  pvDownsamplerReset: pv_downsampler_reset;
-  pvDownsamplerDelete: pv_downsampler_delete;
+  pvDownsamplerInit: pv_downsampler_init_type;
+  pvDownsamplerProcess: pv_downsampler_process_type;
+  pvDownsamplerReset: pv_downsampler_reset_type;
+  pvDownsamplerDelete: pv_downsampler_delete_type;
   frameLength: number;
   version: string;
 };
 
 class Downsampler {
   private readonly _pvDownsamplerConvertNumSamplesToInputSampleRate: pv_downsampler_convert_num_samples_to_input_sample_rate_type;
-  private readonly _pvDownsamplerDelete: pv_downsampler_delete;
-  private readonly _pvDownsamplerProcess: pv_downsampler_process;
-  private readonly _pvDownsamplerReset: pv_downsampler_reset;
+  private readonly _pvDownsamplerDelete: pv_downsampler_delete_type;
+  private readonly _pvDownsamplerProcess: pv_downsampler_process_type;
+  private readonly _pvDownsamplerReset: pv_downsampler_reset_type;
 
   private readonly _inputBufferAddress: number;
   private readonly _objectAddress: number;
@@ -148,7 +148,7 @@ class Downsampler {
     );
 
     const alignedAlloc = instance.exports.aligned_alloc as CallableFunction;
-    const pvDownsamplerInit = instance.exports.pv_downsampler_init as pv_downsampler_init;
+    const pvDownsamplerInit = instance.exports.pv_downsampler_init as pv_downsampler_init_type;
     const pvDownsamplerConvertNumSamplesToInputSampleRate =
       instance.exports.pv_downsampler_convert_num_samples_to_input_sample_rate as
         pv_downsampler_convert_num_samples_to_input_sample_rate_type;
@@ -200,11 +200,11 @@ class Downsampler {
     }
 
     const pvDownsamplerReset = instance.exports
-      .pv_downsampler_reset as pv_downsampler_reset;
+      .pv_downsampler_reset as pv_downsampler_reset_type;
     const pvDownsamplerProcess = instance.exports
-      .pv_downsampler_process as pv_downsampler_process;
+      .pv_downsampler_process as pv_downsampler_process_type;
     const pvDownsamplerDelete = instance.exports
-      .pv_downsampler_delete as pv_downsampler_delete;
+      .pv_downsampler_delete as pv_downsampler_delete_type;
 
     return {
       inputBufferAddress: inputBufferAddress,
@@ -212,7 +212,6 @@ class Downsampler {
       memory: memory,
       objectAddress: objectAddress,
       outputBufferAddress: outputBufferAddress,
-      pvDownsamplerConvertNumSamplesToInputSampleRate:
       pvDownsamplerConvertNumSamplesToInputSampleRate,
       pvDownsamplerInit: pvDownsamplerInit,
       pvDownsamplerProcess: pvDownsamplerProcess,
