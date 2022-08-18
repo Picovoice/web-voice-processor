@@ -49,7 +49,6 @@
       function assertEqual(result, ref, tol) {
           for (let i = 0; i < result.length; i++) {
               if ((Math.abs(result[i] - ref[i])) > tol) {
-                console.log(result[i], i, ref[i])
                   throw Error(`Error:${(Math.abs(result[i] - ref[i]))} is bigger than tolerance:${tol}`)
               }
           }
