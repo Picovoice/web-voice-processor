@@ -9,12 +9,11 @@
     "moduleResolution": "node",
     "noEmit": false,
     "outDir": "./dist",
-    "removeComments": true,
+    "removeComments": false,
     "resolveJsonModule": true,
     "sourceMap": true,
     "strict": true,
-    "target": "esnext",
-    "noImplicitAny": true
+    "target": "esnext"
   },
   "exclude": ["node_modules", "dist"]
 }

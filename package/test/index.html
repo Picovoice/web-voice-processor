@@ -49,6 +49,7 @@
       function assertEqual(result, ref, tol) {
           for (let i = 0; i < result.length; i++) {
               if ((Math.abs(result[i] - ref[i])) > tol) {
+                console.log(result[i], i, ref[i])
                   throw Error(`Error:${(Math.abs(result[i] - ref[i]))} is bigger than tolerance:${tol}`)
               }
           }
@@ -61,43 +62,24 @@
           const inputFrequency = parseInt(document.getElementById("inputFrequency").value);
           const outputFrequency = parseInt(document.getElementById("outputFrequency").value);
           const filterOrder = parseInt(document.getElementById("filterOrder").value);
-          
+
           writeMessage("Starting test...");
-          
+
           if (!pcm || !refPcm) {
               writeMessage("PCM or reference PCM file not provided...");
               return
           }
-          
+
           let dsWorker = null;
-          let numIteration = 0;
-          const result = new Int16Array(frameLength * Math.floor(numOutputFrames))
           try {
               writeMessage("wvp is loading. Please wait...");
-              dsWorker = await WebVoiceProcessor.DownsamplerWorkerFactory.create(
+              dsWorker = await WebVoiceProcessor.DownsamplerWorker.create(
                   inputFrequency,
                   outputFrequency,
-                  frameLength,
-                  filterOrder);
-              dsWorker.onmessage = (event) => {
-                  switch (event.data.command) {
-                      case 'output': {
-                          result.set(event.data.outputFrame, numIteration * frameLength);
-                          if (numIteration++ === Math.floor(numOutputFrames - 1)) {
-                              assertEqual(result, refPcm, 5)
-                          }
-                      }
-                  }
-              };
-          
-              writeMessage("ds worker ready!");
-              for (let i = 0; i < pcm.length / frameLength; i++) {
-                  dsWorker.postMessage({
-                      command: 'process',
-                      inputFrame: pcm.slice(i * frameLength, (i + 1) * frameLength),
-                  })
-              }
-
+                  filterOrder,
+                  frameLength);
+              const result = await dsWorker.process(pcm);
+              assertEqual(result, refPcm, 10);
           } catch (error) {
               writeMessage(error);
               writeMessage("Test failed!");

@@ -9,157 +9,57 @@
     specific language governing permissions and limitations under the License.
 */
 
-import { DownsamplingWorker, DownsamplingWorkerResponse } from './worker_types';
-import DownsamplerWorkerFactory from './downsampler_worker_factory';
+import { base64ToUint8Array } from '@picovoice/web-utils';
 
-export type WebVoiceProcessorOptions = {
-  /** Engines to feed downsampled audio to */
-  engines?: Array<Worker>;
-  /** Immediately start the microphone? */
-  start?: boolean;
-  /** Size of pcm frames (default: 512) */
-  frameLength?: number;
-  /** Which sample rate to convert to (default: 16000) */
-  outputSampleRate?: number;
-  /** Microphone id to use (can be fetched with mediaDevices.enumerateDevices) */
-  deviceId?: string | null;
-};
+import DownsamplerWorker from './downsampler_worker';
+import recorderProcessor from './audio_worklet/recorder_processor.js';
+
+import { PvEngine, WebVoiceProcessorOptions } from './types';
+
+import { AudioDumpEngine } from './engines/audio_dump_engine';
+import VuMeterWorker from 'web-worker:./engines/vu_meter_worker.ts';
+
+// @ts-ignore window.webkitAudioContext
+window.AudioContext = window.AudioContext || window.webkitAudioContext;
 
 /**
  * Obtain microphone permission and audio stream;
- * Downsample audio into 16kHz single-channel PCM for speech recognition (via DownsamplingWorker).
+ * Down sample audio into 16kHz single-channel PCM for speech recognition (via DownsamplerWorker).
  * Continuously send audio frames to voice processing engines.
  */
 export class WebVoiceProcessor {
-  private _audioContext: AudioContext;
-  private _audioDumpPromise: Promise<Blob> | null = null;
-  private _audioDumpReject: any = null;
-  private _audioDumpResolve: any = null;
-  private _audioSource: MediaStreamAudioSourceNode;
-  private _downsamplingWorker: DownsamplingWorker;
-  private _engines: Array<Worker>;
-  private _isRecording: boolean;
-  private _isReleased = false;
-  private _mediaStream: MediaStream;
-  private _options: WebVoiceProcessorOptions;
-  private _node:any;
+  private _audioContext: AudioContext | null = null;
+  private _microphoneStream: MediaStream | null = null;
+  private _recorderNode: AudioWorkletNode | null = null;
+  private _downsamplerWorker: DownsamplerWorker | null = null;
 
-  private static async _initMic(
-    options: WebVoiceProcessorOptions,
-  ): Promise<any> {
-    // Get microphone access and ask user permission
-    const microphoneStream = await navigator.mediaDevices.getUserMedia({
-      audio: {
-        deviceId: options.deviceId ? { exact: options.deviceId } : undefined,
-      },
-    });
+  private readonly _engines: Set<PvEngine>;
+  private readonly _options: WebVoiceProcessorOptions;
 
-    const audioContext = new (window.AudioContext ||
-      // @ts-ignore window.webkitAudioContext
-      window.webkitAudioContext)();
-    const audioSource = audioContext.createMediaStreamSource(microphoneStream);
+  private readonly _vuMeterCallback?: (dB: number) => void;
+  private _vuMeterWorker?: Worker;
 
-    const downsamplingWorker = await DownsamplerWorkerFactory.create(
-      audioSource.context.sampleRate,
-      options.outputSampleRate,
-      options.frameLength,
-    );
+  private static _instance: WebVoiceProcessor | undefined;
 
-    return [
-      microphoneStream,
-      audioContext,
-      audioSource,
-      downsamplingWorker,
-    ];
-  }
-
-  private async _setupAudio(): Promise<any> {
-    this._node = this._audioContext.createScriptProcessor(4096, 1, 1);
-    this._node.onaudioprocess = (event: AudioProcessingEvent): void => {
-      if (this._isRecording) {
-        this._downsamplingWorker.postMessage({
-          command: 'process',
-          inputFrame: event.inputBuffer.getChannelData(0),
-        });
-      }
-    };
-
-    this._audioSource.connect(this._node);
-    this._node.connect(this._audioContext.destination);
-
-    this._downsamplingWorker.onmessage = (
-      event: MessageEvent<DownsamplingWorkerResponse>,
-    ): void => {
-      switch (event.data.command) {
-        case 'output': {
-          for (const engine of this._engines) {
-            engine.postMessage({
-              command: 'process',
-              inputFrame: event.data.outputFrame,
-            });
-          }
-          break;
-        }
-        case 'audio_dump_complete': {
-          this._audioDumpResolve(event.data.blob);
-          this._audioDumpPromise = null;
-          this._audioDumpResolve = null;
-          this._audioDumpReject = null;
-          break;
-        }
-        default: {
-          console.warn(`Received unexpected command: ${event.data.command}`);
-          break;
-        }
-      }
-    };
+  private constructor(options: WebVoiceProcessorOptions) {
+    this._engines = new Set();
+    this._options = options;
+    this._vuMeterCallback = options.vuMeterCallback;
   }
 
   /**
-   * Acquires the microphone audio stream (incl. asking permission),
-   * and continuously forwards the downsampled audio to speech recognition worker engines.
+   * Gets or create a WebVoiceProcessor singleton instance.
    *
-   * @param options Startup options including whether to immediately begin
-   * processing, and the set of voice processing engines
-   * @return the promise from mediaDevices.getUserMedia()
+   * @param options Startup options.
+   * @return WebVoiceProcessor singleton.
    */
-
   public static async init(
-    options: WebVoiceProcessorOptions,
+    options: WebVoiceProcessorOptions = {},
   ): Promise<WebVoiceProcessor> {
-    const [microphoneStream, audioContext, audioSource, downsamplingWorker] = await this._initMic(options);
-
-    return new WebVoiceProcessor(
-      microphoneStream,
-      audioContext,
-      audioSource,
-      downsamplingWorker,
-      options,
-    );
-  }
-
-  private constructor(
-    inputMediaStream: MediaStream,
-    audioContext: AudioContext,
-    audioSource: MediaStreamAudioSourceNode,
-    downsamplingWorker: DownsamplingWorker,
-    options: WebVoiceProcessorOptions,
-  ) {
-    this._options = options;
-
-    if (options.engines === undefined) {
-      this._engines = [];
-    } else {
-      this._engines = options.engines;
+    if (!this._instance) {
+      this._instance = new WebVoiceProcessor(options);
     }
-    this._isRecording = options.start ?? true;
-
-    this._mediaStream = inputMediaStream;
-    this._downsamplingWorker = downsamplingWorker;
-    this._audioContext = audioContext;
-    this._audioSource = audioSource;
-
-    this._setupAudio();
+    return this._instance;
   }
 
   /**
@@ -168,88 +68,210 @@ export class WebVoiceProcessor {
    * @param durationMs the duration of the recording, in milliseconds
    * @return the data in Blob format, wrapped in a promise
    */
-
   public async audioDump(durationMs: number = 3000): Promise<Blob> {
-    if (this._audioDumpPromise !== null) {
-      return Promise.reject('Audio dump already in progress');
-    }
-
-    this._downsamplingWorker.postMessage({
-      command: 'start_audio_dump',
-      durationMs: durationMs,
+    const audioDumpEngine = new AudioDumpEngine();
+    this.subscribe(audioDumpEngine);
+    return new Promise<Blob>(resolve => {
+      // @ts-ignore
+      this.audioDumpEngine = audioDumpEngine;
+      setTimeout(() => {
+        this.unsubscribe(audioDumpEngine);
+        resolve(audioDumpEngine.onend());
+      }, durationMs);
     });
-
-    this._audioDumpPromise = new Promise<Blob>((resolve, reject) => {
-      this._audioDumpResolve = resolve;
-      this._audioDumpReject = reject;
-    });
-
-    return this._audioDumpPromise;
   }
 
   /**
-   * Stop listening to the microphone & release all resources; terminate downsampling worker.
-   *
-   * @return the promise from AudioContext.close()
+   * Subscribe an engine. A subscribed engine will receive audio frames via
+   * `.postMessage({command: 'process', inputFrame: inputFrame})`.
+   * @param engine The engine to unsubscribe.
    */
+  public subscribe(engine: PvEngine): void {
+    if (engine.worker) {
+      if (engine.worker.postMessage && typeof engine.worker.postMessage === 'function') {
+        this._engines.add(engine);
+      } else {
+        throw new Error("Engine must have a 'onmessage' handler.");
+      }
+    } else {
+      if (engine.postMessage && typeof engine.postMessage === 'function') {
+        this._engines.add(engine);
+      } else if (engine.onmessage && typeof engine.onmessage === 'function') {
+        this._engines.add(engine);
+      } else {
+        throw new Error("Engine must have a 'onmessage' handler.");
+      }
+    }
+  }
 
-  public async release(): Promise<void> {
-    if (!this._isReleased) {
-      this._isReleased = true;
-      this._isRecording = false;
-      this._downsamplingWorker.postMessage({ command: 'release' });
-      this._downsamplingWorker.terminate();
+  /**
+   * Unsubscribe an engine.
+   * @param engine The engine to unsubscribe.
+   */
+  public unsubscribe(engine: PvEngine): void {
+    this._engines.delete(engine);
+  }
 
-      this._mediaStream.getTracks().forEach(function (track) {
+  /**
+   * Resumes or starts audio context. Also initializes downsampler, capture device and other configurations
+   * based on `options`.
+   */
+  public async start(): Promise<void> {
+    if (this._audioContext === null || this._audioContext.state === "closed") {
+      const { audioContext, microphoneStream, recorderNode, downsamplerWorker } = await this.setupRecorder(this._options);
+      this._audioContext = audioContext;
+      this._microphoneStream = microphoneStream;
+      this._recorderNode = recorderNode;
+      this._downsamplerWorker = downsamplerWorker;
+
+      recorderNode.port.onmessage = (event: MessageEvent): void => {
+        this.recorderCallback(event.data.buffer);
+      };
+
+      if (this._vuMeterCallback) {
+        this.setupVuMeter();
+      }
+    }
+
+    if (this._audioContext.state === "suspended") {
+      await this._audioContext.resume();
+    }
+  }
+
+  /**
+   * Sets audio context in a suspended state. Engines will stop receiving frames
+   * during this time.
+   */
+  public async pause(): Promise<void> {
+    if (this._audioContext !== null && this._audioContext.state === "running") {
+      await this._audioContext.suspend();
+    }
+  }
+
+  /**
+   * Closes audio context completely. Furthermore, terminates and stops any other
+   * instance created initially.
+   */
+  public async stop(): Promise<void> {
+    if (this._audioContext !== null && this._audioContext.state !== "closed") {
+      this._downsamplerWorker?.terminate();
+      this._vuMeterWorker?.terminate();
+      this._microphoneStream?.getAudioTracks().forEach(track => {
         track.stop();
       });
-      this._node.disconnect();
       await this._audioContext.close();
     }
   }
 
-  public async stop(): Promise<void> {
-    return this.release();
-  }
-
-  public pause(): void {
-    this._isRecording = false;
-    this._downsamplingWorker.postMessage({ command: 'reset' });
-  }
-
-  public async start(): Promise<void> {
-    this._isRecording = true;
-    if (this._isReleased) {
-      this._isReleased = false;
-      this._isRecording = true;
-      const [microphoneStream, audioContext, audioSource, downsamplingWorker] = await WebVoiceProcessor._initMic(this._options);
-
-      this._mediaStream = microphoneStream;
-      this._downsamplingWorker = downsamplingWorker;
-      this._audioContext = audioContext;
-      this._audioSource = audioSource;
-
-      this._setupAudio();
-    }
-  }
-
+  /**
+   * Gets the current audio context.
+   */
   get audioContext(): AudioContext | null {
     return this._audioContext;
   }
 
-  get audioSource(): MediaStreamAudioSourceNode {
-    return this._audioSource;
-  }
-
-  get mediaStream(): MediaStream {
-    return this._mediaStream;
-  }
-
+  /**
+   * Flag to check if it is currently recording.
+   */
   get isRecording(): boolean {
-    return this._isRecording;
+    return this._audioContext?.state === "running";
   }
 
+  /**
+   * Flag to check if audio context has been released.
+   */
   get isReleased(): boolean {
-    return this._isReleased;
+    return this._audioContext?.state === "closed";
+  }
+
+  private setupVuMeter(): void {
+    this._vuMeterWorker = new VuMeterWorker();
+    this.subscribe(this._vuMeterWorker);
+    this._vuMeterWorker.onmessage = (e: MessageEvent): void => {
+      if (this._vuMeterCallback) {
+        this._vuMeterCallback(e.data);
+      }
+    };
+  }
+
+  private async recorderCallback(inputFrames: Array<Float32Array>): Promise<void> {
+    if (this._downsamplerWorker === null) {
+      return;
+    }
+
+    const inputFrame = await this._downsamplerWorker.process(inputFrames[0]);
+    for (const engine of this._engines) {
+      if (engine.worker && engine.worker.postMessage) {
+        engine.worker.postMessage({
+          command: 'process',
+          inputFrame: inputFrame
+        });
+      } else if (engine.postMessage) {
+        engine.postMessage({
+          command: 'process',
+          inputFrame: inputFrame
+        });
+      } else if (engine.onmessage) {
+        engine.onmessage({
+          data: {
+            command: 'process',
+            inputFrame: inputFrame
+          }
+        } as MessageEvent);
+      }
+    }
+  }
+
+  private async setupRecorder(
+    options: WebVoiceProcessorOptions,
+  ) {
+    const {
+      numberOfChannels = 1,
+      outputSampleRate = 16000,
+      frameLength = 512,
+      deviceId = null,
+      filterOrder = 50,
+    } = options;
+    const audioContext = new AudioContext();
+
+    // Get microphone access and ask user permission
+    const microphoneStream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        deviceId: deviceId ? { exact: deviceId } : undefined,
+      },
+    });
+
+    const audioSource = audioContext.createMediaStreamSource(microphoneStream);
+
+    const objectURL = URL.createObjectURL(new Blob([base64ToUint8Array(recorderProcessor).buffer], {type: 'application/javascript'}));
+    await audioContext.audioWorklet.addModule(objectURL);
+
+    const downsamplerWorker = await DownsamplerWorker.create(
+      audioSource.context.sampleRate,
+      outputSampleRate,
+      filterOrder,
+      frameLength,
+    );
+
+    const recorderNode = new window.AudioWorkletNode(
+      audioContext,
+      'recorder-processor',
+      {
+        processorOptions: {
+          numberOfChannels,
+          frameLength
+        }
+      }
+    );
+
+    audioSource.connect(recorderNode);
+    recorderNode.connect(audioContext.destination);
+
+    return {
+      audioContext,
+      microphoneStream,
+      recorderNode,
+      downsamplerWorker
+    };
   }
 }

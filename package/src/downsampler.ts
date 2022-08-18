@@ -9,41 +9,48 @@
     specific language governing permissions and limitations under the License.
 */
 
-import {DownsamplerInterface} from './worker_types';
-import {WASM_BASE64} from './downsampler_b64';
-import {arrayBufferToStringAtIndex, base64ToUint8Array} from './utils';
-import {wasiSnapshotPreview1Emulator} from './wasi_snapshot';
+/* eslint camelcase: 0 */
+
+import { arrayBufferToStringAtIndex, base64ToUint8Array } from '@picovoice/web-utils';
+import { wasiSnapshotPreview1Emulator } from './wasi_snapshot';
 
 const PV_STATUS_SUCCESS = 10000;
 
+type pv_downsampler_convert_num_samples_to_input_sample_rate_type = (objectAddress: number, frameLength: number) => number;
+type pv_downsampler_init = (inputFrequency: number, outputFrequency: number, order: number, objectAddressAddress: number) => number;
+type pv_downsampler_process = (objectAddress: number, inputBufferAddress: number, inputBufferSize: number, outputBufferAddress: number) => number;
+type pv_downsampler_reset = (objectAddress: number) => void;
+type pv_downsampler_delete = (objectAddress: number) => number;
+
 type DownsamplerWasmOutput = {
   inputBufferAddress: number;
-  inputframeLength: number;
+  inputFrameLength: number;
   memory: WebAssembly.Memory;
   objectAddress: number;
   outputBufferAddress: number;
-  pvDownsamplerConvertNumSamplesToInputSampleRate: CallableFunction;
-  pvDownsamplerInit: CallableFunction;
-  pvDownsamplerProcess: CallableFunction;
-  pvDownsamplerReset: CallableFunction;
-  pvDownsamplerDelete: CallableFunction;
+  pvDownsamplerConvertNumSamplesToInputSampleRate: pv_downsampler_convert_num_samples_to_input_sample_rate_type;
+  pvDownsamplerInit: pv_downsampler_init;
+  pvDownsamplerProcess: pv_downsampler_process;
+  pvDownsamplerReset: pv_downsampler_reset;
+  pvDownsamplerDelete: pv_downsampler_delete;
   version: string;
 };
 
-class Downsampler implements DownsamplerInterface {
-  private _pvDownsamplerConvertNumSamplesToInputSampleRate: CallableFunction;
-  private _pvDownsamplerDelete: CallableFunction;
-  private _pvDownsamplerProcess: CallableFunction;
-  private _pvDownsamplerReset: CallableFunction;
+class Downsampler {
+  private readonly _pvDownsamplerConvertNumSamplesToInputSampleRate: pv_downsampler_convert_num_samples_to_input_sample_rate_type;
+  private readonly _pvDownsamplerDelete: pv_downsampler_delete;
+  private readonly _pvDownsamplerProcess: pv_downsampler_process;
+  private readonly _pvDownsamplerReset: pv_downsampler_reset;
 
-  private _inputBufferAddress: number;
-  private _objectAddress: number;
-  private _outputBufferAddress: number;
+  private readonly _inputBufferAddress: number;
+  private readonly _objectAddress: number;
+  private readonly _outputBufferAddress: number;
+
   private _wasmMemory: WebAssembly.Memory;
-
   private _memoryBuffer: Int16Array;
   private _memoryBufferView: DataView;
 
+  private static _wasm: string;
   public static _version: string;
 
   private constructor(handleWasm: DownsamplerWasmOutput) {
@@ -62,6 +69,12 @@ class Downsampler implements DownsamplerInterface {
 
     this._memoryBuffer = new Int16Array(handleWasm.memory.buffer);
     this._memoryBufferView = new DataView(handleWasm.memory.buffer);
+  }
+
+  public static setWasm(wasm: string): void {
+    if (this._wasm === undefined) {
+      this._wasm = wasm;
+    }
   }
 
   public static async create(
@@ -88,14 +101,16 @@ class Downsampler implements DownsamplerInterface {
   ): Promise<DownsamplerWasmOutput> {
     // A WebAssembly page has a constant size of 64KiB. -> 4MiB ~= 64 pages
     // minimum memory requirements for init: 2 pages
-    const memory = new WebAssembly.Memory({initial: 64, maximum: 128});
+    const memory = new WebAssembly.Memory({ initial: 64 });
 
     const memoryBufferUint8 = new Uint8Array(memory.buffer);
 
-    const pvConsoleLogWasm = function (index: number): void {
+    const pvConsoleLogWasm = function(index: number): void {
+      // eslint-disable-next-line no-console
       console.log(arrayBufferToStringAtIndex(memoryBufferUint8, index));
     };
-    const pvAssertWasm = function (
+
+    const pvAssertWasm = function(
       expr: number,
       line: number,
       fileNameAddress: number,
@@ -121,15 +136,17 @@ class Downsampler implements DownsamplerInterface {
       },
     };
 
-    const wasmCodeArray = base64ToUint8Array(WASM_BASE64);
-    const {instance} = await WebAssembly.instantiate(
+    const wasmCodeArray = base64ToUint8Array(this._wasm);
+    const { instance } = await WebAssembly.instantiate(
       wasmCodeArray,
       importObject,
     );
 
     const alignedAlloc = instance.exports.aligned_alloc as CallableFunction;
-    const pvDownsamplerInit = instance.exports.pv_downsampler_init as CallableFunction;
-    const pvDownsamplerConvertNumSamplesToInputSampleRate = instance.exports.pv_downsampler_convert_num_samples_to_input_sample_rate as CallableFunction;
+    const pvDownsamplerInit = instance.exports.pv_downsampler_init as pv_downsampler_init;
+    const pvDownsamplerConvertNumSamplesToInputSampleRate =
+      instance.exports.pv_downsampler_convert_num_samples_to_input_sample_rate as
+        pv_downsampler_convert_num_samples_to_input_sample_rate_type;
     const pvDownsamplerVersion = instance.exports.pv_downsampler_version as CallableFunction;
 
     const objectAddressAddress = alignedAlloc(
@@ -158,13 +175,13 @@ class Downsampler implements DownsamplerInterface {
     const memoryBufferView = new DataView(memory.buffer);
     const objectAddress = memoryBufferView.getInt32(objectAddressAddress, true);
 
-    const inputframeLength = pvDownsamplerConvertNumSamplesToInputSampleRate(
+    const inputFrameLength = pvDownsamplerConvertNumSamplesToInputSampleRate(
       objectAddress,
       frameLength,
     );
     const inputBufferAddress = alignedAlloc(
       Int16Array.BYTES_PER_ELEMENT,
-      (inputframeLength+1) * Int16Array.BYTES_PER_ELEMENT,
+      (inputFrameLength + 1) * Int16Array.BYTES_PER_ELEMENT,
     );
     if (inputBufferAddress === 0) {
       throw new Error('malloc failed: Cannot allocate memory');
@@ -178,15 +195,15 @@ class Downsampler implements DownsamplerInterface {
     }
 
     const pvDownsamplerReset = instance.exports
-      .pv_downsampler_reset as CallableFunction;
+      .pv_downsampler_reset as pv_downsampler_reset;
     const pvDownsamplerProcess = instance.exports
-      .pv_downsampler_process as CallableFunction;
+      .pv_downsampler_process as pv_downsampler_process;
     const pvDownsamplerDelete = instance.exports
-      .pv_downsampler_delete as CallableFunction;
+      .pv_downsampler_delete as pv_downsampler_delete;
 
     return {
       inputBufferAddress: inputBufferAddress,
-      inputframeLength: inputframeLength,
+      inputFrameLength: inputFrameLength,
       memory: memory,
       objectAddress: objectAddress,
       outputBufferAddress: outputBufferAddress,
@@ -201,10 +218,25 @@ class Downsampler implements DownsamplerInterface {
   }
 
   public process(
-    inputBuffer: Int16Array,
+    inputFrame: Int16Array | Float32Array,
     inputBufferSize: number,
     outputBuffer: Int16Array,
   ): number {
+    let inputBuffer = new Int16Array(inputFrame.length);
+    if (inputFrame.constructor === Float32Array) {
+      for (let i = 0; i < inputFrame.length; i++) {
+        if (inputFrame[i] < 0) {
+          inputBuffer[i] = 0x8000 * inputFrame[i];
+        } else {
+          inputBuffer[i] = 0x7fff * inputFrame[i];
+        }
+      }
+    } else if (inputFrame.constructor === Int16Array) {
+      inputBuffer = inputFrame;
+    } else {
+      throw new Error(`Invalid inputFrame type: ${typeof inputFrame}. Expected Float32Array or Int16Array.`);
+    }
+
     this._memoryBuffer.set(
       inputBuffer,
       this._inputBufferAddress / Int16Array.BYTES_PER_ELEMENT,
@@ -229,7 +261,7 @@ class Downsampler implements DownsamplerInterface {
     this._pvDownsamplerReset(this._objectAddress);
   }
 
-  public delete(): void {
+  public release(): void {
     this._pvDownsamplerDelete(this._objectAddress);
   }
 
