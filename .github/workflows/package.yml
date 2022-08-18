@@ -6,13 +6,13 @@ on:
     branches: [master]
     paths:
       - "audio/**"
-      - "package/**"
+      - "src/**"
       - "lib/**"
   pull_request:
     branches: [master]
     paths:
       - "audio/**"
-      - "package/**"
+      - "src/**"
       - "lib/**"
 
 jobs:
@@ -44,8 +44,6 @@ jobs:
 
       - name: Build
         run: yarn && yarn build
-        working-directory: package/
 
       - name: Test
         run: python3 test/selenium_test.py
-        working-directory: package/

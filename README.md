@@ -162,6 +162,28 @@ used resources including microphone's resources and audio context.
 await handle.stop();
 ```
 
+### Options
+
+To update the audio settings in `WebVoiceProcessor`, call the `instance` function with new `options`. 
+Then call `stop`, and `start` so it can start recording audio with the new settings.
+This step is required since the `audioContext` has to be recreated to reflect the changes.
+
+### VuMeter
+
+`WebVoiceProcessor` includes a built-in engine which returns the [VU meter](https://en.wikipedia.org/wiki/VU_meter).
+To capture the VU meter value, create a callback and pass it in the `options` parameter:
+
+```javascript
+function vuMeterCallback(dB) {
+  console.log(dB)
+}
+
+const handle = await window.WebVoiceProcessor.WebVoiceProcessor.instance({vuMeterCallback});
+```
+
+The `vuMeterCallback` should expected a number in terms of [dBFS](https://en.wikipedia.org/wiki/DBFS) within the range of [-96, 0].
+
+
 ## Build from source
 
 Use `yarn` or `npm` to build WebVoiceProcessor:
