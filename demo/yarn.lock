@@ -2,10 +2,10 @@
 # yarn lockfile v1
 
 
-"@picovoice/web-voice-processor@^3.0.0":
-  version "3.0.0"
-  resolved "https://registry.yarnpkg.com/@picovoice/web-voice-processor/-/web-voice-processor-3.0.0.tgz#0dbdbcfa79022fc54f6b51ee4294efb847fd736f"
-  integrity sha512-EtkCvUOklmWESabT2rVfrHsUGugg6zj1JBV9Jl9h7nzaGVXPMhDVuiwtZpT8TFVSLKXNOV31QsoSHnzN2CYjvQ==
+"@picovoice/web-voice-processor@^3.0.1":
+  version "3.0.1"
+  resolved "https://registry.yarnpkg.com/@picovoice/web-voice-processor/-/web-voice-processor-3.0.1.tgz#e2adf41efe31971a58fa5f5ac09f34daab7dff72"
+  integrity sha512-+B23Yj+leSm6Kk+Pv2K94X2yZF2ccapFrCOMZ90G4uJmZqeLpTkSrz7UI43vJgdxMc0dp+lS0lP2zMtpzxW5HA==
 
 async@^2.6.2:
   version "2.6.3"

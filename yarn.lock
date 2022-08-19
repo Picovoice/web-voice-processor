@@ -1231,11 +1231,6 @@
     minimatch "^3.1.2"
     strip-json-comments "^3.1.1"
 
-"@free-side/audioworklet-polyfill@^1.1.3-beta.4":
-  version "1.1.3-beta.4"
-  resolved "https://registry.yarnpkg.com/@free-side/audioworklet-polyfill/-/audioworklet-polyfill-1.1.3-beta.4.tgz#97143ccfd1ef96082f6849767bf4939fc2fb8927"
-  integrity sha512-w6Rub/Mu9BAdWvJaCsATqR0L/SEiRM6neQ73g8fcjxBzRfjC90C4e0TZ7nQ0qNzufh2tu83b14kI/j0JzlgPzQ==
-
 "@humanwhocodes/config-array@^0.10.4":
   version "0.10.4"
   resolved "https://registry.yarnpkg.com/@humanwhocodes/config-array/-/config-array-0.10.4.tgz#01e7366e57d2ad104feea63e72248f22015c520c"
