@@ -11,19 +11,19 @@
 
 type ProcessorPolyfill = {
   port?: {
-    onmessage?: (event: MessageEvent<{buffer: Float32Array[]}>) => void;
+    onmessage?: (event: MessageEvent<{ buffer: Float32Array[] }>) => void;
   }
 };
 
 // @ts-ignore window.webkitAudioContext
 window.AudioContext = window.AudioContext || window.webkitAudioContext;
 
-if (typeof AudioWorkletNode !== 'function' || !("audioWorklet" in AudioContext.prototype)) {
+if (typeof AudioWorkletNode !== 'function' || !('audioWorklet' in AudioContext.prototype)) {
   // @ts-ignore
   AudioContext.prototype.audioWorklet = {
     addModule: async function(moduleURL: string | URL, options?: WorkletOptions): Promise<void> {
       return;
-    }
+    },
   };
 
   // @ts-ignore
