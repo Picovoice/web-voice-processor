@@ -1,4 +1,4 @@
-import '@free-side/audioworklet-polyfill';
+import './polyfill/audioworklet_polyfill';
 
 import { WvpMessageEvent, WebVoiceProcessorOptions } from './types';
 

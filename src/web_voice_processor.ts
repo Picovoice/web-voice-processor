@@ -19,9 +19,6 @@ import { PvEngine, WebVoiceProcessorOptions } from './types';
 import { AudioDumpEngine } from './engines/audio_dump_engine';
 import VuMeterWorker from 'web-worker:./engines/vu_meter_worker.ts';
 
-// @ts-ignore window.webkitAudioContext
-window.AudioContext = window.AudioContext || window.webkitAudioContext;
-
 /**
  * Obtain microphone permission and audio stream;
  * Down sample audio into 16kHz single-channel PCM for speech recognition (via DownsamplerWorker).
