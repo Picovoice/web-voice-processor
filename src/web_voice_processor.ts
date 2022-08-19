@@ -263,6 +263,7 @@ export class WebVoiceProcessor {
       'recorder-processor',
       {
         processorOptions: {
+          frameLength,
           numberOfChannels
         }
       }

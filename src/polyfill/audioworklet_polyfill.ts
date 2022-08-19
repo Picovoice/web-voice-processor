@@ -29,8 +29,8 @@ if (typeof AudioWorkletNode !== 'function' || !('audioWorklet' in AudioContext.p
   // @ts-ignore
   // eslint-disable-next-line no-native-reassign
   window.AudioWorkletNode = function(context: AudioContext, processorName: string, options: any): ScriptProcessorNode {
-    const { numberOfChannels = 1 } = options && options.processorOptions;
-    const scriptProcessor: ScriptProcessorNode & ProcessorPolyfill = context.createScriptProcessor(512, numberOfChannels, numberOfChannels);
+    const { numberOfChannels = 1, frameLength = 512 } = options && options.processorOptions;
+    const scriptProcessor: ScriptProcessorNode & ProcessorPolyfill = context.createScriptProcessor(frameLength, numberOfChannels, numberOfChannels);
 
     if (!scriptProcessor.port) {
       scriptProcessor.port = {};
