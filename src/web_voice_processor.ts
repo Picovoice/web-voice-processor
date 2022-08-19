@@ -50,9 +50,9 @@ export class WebVoiceProcessor {
    * @param options Startup options.
    * @return WebVoiceProcessor singleton.
    */
-  public static async instance(
+  public static instance(
     options: WebVoiceProcessorOptions = {},
-  ): Promise<WebVoiceProcessor> {
+  ): WebVoiceProcessor {
     if (!this._instance) {
       this._instance = new WebVoiceProcessor(options);
     } else {
