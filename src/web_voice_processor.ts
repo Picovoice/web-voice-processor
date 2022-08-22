@@ -126,7 +126,7 @@ export class WebVoiceProcessor {
     return new Promise((resolve, reject) => {
       this._mutex
         .runExclusive(async () => {
-          if (this._audioContext === null || this._state === WvpState.STOPPED) {
+          if (this._audioContext === null || this._state === WvpState.STOPPED || this.isReleased) {
             const { audioContext, microphoneStream, recorderNode, downsamplerWorker } = await this.setupRecorder(this._options);
             this._audioContext = audioContext;
             this._microphoneStream = microphoneStream;
@@ -222,7 +222,7 @@ export class WebVoiceProcessor {
    * Flag to check if it is currently recording.
    */
   get isRecording(): boolean {
-    return this._audioContext?.state === "running";
+    return this._state === WvpState.STARTED;
   }
 
   /**
@@ -271,7 +271,7 @@ export class WebVoiceProcessor {
   }
 
   private async getAudioContext(): Promise<AudioContext> {
-    if (this._audioContext === null) {
+    if (this._audioContext === null || this.isReleased) {
       this._audioContext = new AudioContext();
       const objectURL = URL.createObjectURL(new Blob([base64ToUint8Array(recorderProcessor).buffer], {type: 'application/javascript'}));
       await this._audioContext.audioWorklet.addModule(objectURL);
