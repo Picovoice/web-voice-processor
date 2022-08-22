@@ -44,20 +44,7 @@
           document.body.appendChild(p);
         }
 
-        writeMessage(
-          'WebVoiceProcessor is initializing & awaiting the result of microphone permissions ...',
-        );
-
-        window.WebVoiceProcessor.WebVoiceProcessor.instance({
-          vuMeterCallback
-        }).then(webvp => {
-            handle = webvp;
-            writeMessage('WebVoiceProcessor ready.');
-            window.demoWebVp = webvp;
-          })
-          .catch(error => {
-            writeMessage('Error initializing WebVoiceProcessor: ' + error);
-          });
+        handle = window.WebVoiceProcessor.WebVoiceProcessor.instance({vuMeterCallback})
 
         document.getElementById('start-audio-dump').onclick = () => {
           writeMessage('Starting Audio dump ...');
@@ -85,7 +72,9 @@
         document.getElementById('start').onclick = () => {
           document.getElementById('start').disabled = true;
           writeMessage('Starting ...');
-          handle.start();
+          handle.start().catch(error => {
+            writeMessage('Error initializing WebVoiceProcessor: ' + error);
+          })
           document.getElementById('stop').disabled = false;
           document.getElementById('pause').disabled = false;
           document.getElementById('start-audio-dump').disabled = false;

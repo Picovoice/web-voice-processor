@@ -9,6 +9,12 @@
     specific language governing permissions and limitations under the License.
 */
 
+export enum WvpState {
+  STARTED,
+  STOPPED,
+  PAUSED
+}
+
 export type WvpMessageEvent = {
   command: 'process',
   inputFrame: Int16Array
