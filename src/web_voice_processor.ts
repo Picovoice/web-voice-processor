@@ -9,12 +9,14 @@
     specific language governing permissions and limitations under the License.
 */
 
+import { Mutex } from 'async-mutex';
+
 import { base64ToUint8Array } from '@picovoice/web-utils';
 
 import DownsamplerWorker from './downsampler_worker';
 import recorderProcessor from './audio_worklet/recorder_processor.js';
 
-import { PvEngine, WebVoiceProcessorOptions } from './types';
+import { PvEngine, WebVoiceProcessorOptions, WvpState } from './types';
 
 import { AudioDumpEngine } from './engines/audio_dump_engine';
 import VuMeterWorker from 'web-worker:./engines/vu_meter_worker.ts';
@@ -25,6 +27,8 @@ import VuMeterWorker from 'web-worker:./engines/vu_meter_worker.ts';
  * Continuously send audio frames to voice processing engines.
  */
 export class WebVoiceProcessor {
+  private _mutex = new Mutex();
+
   private _audioContext: AudioContext | null = null;
   private _microphoneStream: MediaStream | null = null;
   private _recorderNode: AudioWorkletNode | null = null;
@@ -32,6 +36,7 @@ export class WebVoiceProcessor {
 
   private readonly _engines: Set<PvEngine>;
   private _options: WebVoiceProcessorOptions;
+  private _state: WvpState;
 
   private _vuMeterCallback?: (dB: number) => void;
   private _vuMeterWorker?: Worker;
@@ -41,6 +46,7 @@ export class WebVoiceProcessor {
   private constructor(options: WebVoiceProcessorOptions) {
     this._engines = new Set();
     this._options = options;
+    this._state = WvpState.STOPPED;
     this._vuMeterCallback = options.vuMeterCallback;
   }
 
@@ -116,55 +122,93 @@ export class WebVoiceProcessor {
    * Resumes or starts audio context. Also initializes downsampler, capture device and other configurations
    * based on `options`.
    */
-  public async start(): Promise<void> {
-    if (this._audioContext === null || this._audioContext.state === "closed") {
-      const { audioContext, microphoneStream, recorderNode, downsamplerWorker } = await this.setupRecorder(this._options);
-      this._audioContext = audioContext;
-      this._microphoneStream = microphoneStream;
-      this._recorderNode = recorderNode;
-      this._downsamplerWorker = downsamplerWorker;
+  public start(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      this._mutex
+        .runExclusive(async () => {
+          if (this._audioContext === null || this._state === WvpState.STOPPED) {
+            const { audioContext, microphoneStream, recorderNode, downsamplerWorker } = await this.setupRecorder(this._options);
+            this._audioContext = audioContext;
+            this._microphoneStream = microphoneStream;
+            this._recorderNode = recorderNode;
+            this._downsamplerWorker = downsamplerWorker;
 
-      recorderNode.port.onmessage = (event: MessageEvent): void => {
-        this.recorderCallback(event.data.buffer);
-      };
+            recorderNode.port.onmessage = (event: MessageEvent): void => {
+              this.recorderCallback(event.data.buffer);
+            };
 
-      if (this._vuMeterCallback) {
-        this.setupVuMeter();
-      }
-    }
+            if (this._vuMeterCallback) {
+              this.setupVuMeter();
+            }
+            this._state = WvpState.STARTED;
+          }
 
-    if (this._audioContext.state === "suspended") {
-      await this._audioContext.resume();
-    }
+          if (this._state === WvpState.PAUSED) {
+            await this._audioContext.resume();
+            this._state = WvpState.STARTED;
+          }
+        })
+        .then(() => {
+          resolve();
+        })
+        .catch((error: any) => {
+          reject(error);
+        });
+    });
   }
 
   /**
    * Sets audio context in a suspended state. Engines will stop receiving frames
    * during this time.
    */
-  public async pause(): Promise<void> {
-    if (this._audioContext !== null && this._audioContext.state === "running") {
-      await this._audioContext.suspend();
-    }
+  public pause(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      this._mutex
+        .runExclusive(async () => {
+          if (this._audioContext !== null && this._state !== WvpState.PAUSED) {
+            await this._audioContext.suspend();
+            this._state = WvpState.PAUSED;
+          }
+        })
+        .then(() => {
+          resolve();
+        })
+        .catch((error: any) => {
+          reject(error);
+        });
+    });
   }
 
   /**
-   * Closes audio context completely. Furthermore, terminates and stops any other
+   * Stops and closes resources used. Furthermore, terminates and stops any other
    * instance created initially.
+   * AudioContext is kept alive to be used when starting again.
    */
-  public async stop(): Promise<void> {
-    if (this._audioContext !== null && this._audioContext.state !== "closed") {
-      this._downsamplerWorker?.terminate();
-      this._microphoneStream?.getAudioTracks().forEach(track => {
-        track.stop();
-      });
-      await this._audioContext.close();
+  public stop(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      this._mutex
+        .runExclusive(async () => {
+          if (this._audioContext !== null && this._state !== WvpState.STOPPED) {
+            this._downsamplerWorker?.terminate();
+            this._recorderNode?.port.close();
+            this._microphoneStream?.getAudioTracks().forEach(track => {
+              track.stop();
+            });
 
-      if (this._vuMeterWorker) {
-        this.unsubscribe(this._vuMeterWorker);
-        this._vuMeterWorker.terminate();
-      }
-    }
+            if (this._vuMeterWorker) {
+              this.unsubscribe(this._vuMeterWorker);
+              this._vuMeterWorker.terminate();
+            }
+            this._state = WvpState.STOPPED;
+          }
+        })
+        .then(() => {
+          resolve();
+        })
+        .catch((error: any) => {
+          reject(error);
+        });
+    });
   }
 
   /**
@@ -226,6 +270,15 @@ export class WebVoiceProcessor {
     }
   }
 
+  private async getAudioContext(): Promise<AudioContext> {
+    if (this._audioContext === null) {
+      this._audioContext = new AudioContext();
+      const objectURL = URL.createObjectURL(new Blob([base64ToUint8Array(recorderProcessor).buffer], {type: 'application/javascript'}));
+      await this._audioContext.audioWorklet.addModule(objectURL);
+    }
+    return this._audioContext;
+  }
+
   private async setupRecorder(
     options: WebVoiceProcessorOptions,
   ) {
@@ -237,7 +290,7 @@ export class WebVoiceProcessor {
     } = options;
     const numberOfChannels = 1;
 
-    const audioContext = new AudioContext();
+    const audioContext = await this.getAudioContext();
 
     // Get microphone access and ask user permission
     const microphoneStream = await navigator.mediaDevices.getUserMedia({
@@ -247,9 +300,6 @@ export class WebVoiceProcessor {
     });
 
     const audioSource = audioContext.createMediaStreamSource(microphoneStream);
-
-    const objectURL = URL.createObjectURL(new Blob([base64ToUint8Array(recorderProcessor).buffer], {type: 'application/javascript'}));
-    await audioContext.audioWorklet.addModule(objectURL);
 
     const downsamplerWorker = await DownsamplerWorker.create(
       audioSource.context.sampleRate,
