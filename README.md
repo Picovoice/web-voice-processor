@@ -130,6 +130,14 @@ await WebVoiceProcessor.unsubscribe(engine);
 await WebVoiceProcessor.unsubscribe(worker);
 ```
 
+### Reset
+
+Use the `reset` function to remove all engines and stop recording audio.
+
+```javascript
+await WebVoiceProcessor.reset();
+```
+
 ### Options
 
 To update the audio settings in `WebVoiceProcessor`, use the `setOptions` function:

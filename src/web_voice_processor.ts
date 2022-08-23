@@ -116,17 +116,11 @@ export class WebVoiceProcessor {
   }
 
   /**
-   * Gets the current audio context.
+   * Removes all engines and stops recording audio.
    */
-  static get audioContext(): AudioContext | null {
-    return this.instance()._audioContext;
-  }
-
-  /**
-   * Flag to check if it is currently recording.
-   */
-  static get isRecording(): boolean {
-    return this.instance()._state === WvpState.STARTED;
+  static async reset(): Promise<void> {
+    this.instance()._engines.clear();
+    await this.instance().stop();
   }
 
   /**
@@ -138,13 +132,27 @@ export class WebVoiceProcessor {
    * @param options WebVoiceProcessor recording options.
    * @param forceUpdate Flag to force update recorder with new options.
    */
-  static setOptions(options: WebVoiceProcessorOptions, forceUpdate = false) {
+  static setOptions(options: WebVoiceProcessorOptions, forceUpdate = false): void {
     this.instance()._options = options;
     if (forceUpdate) {
       this.instance().stop().then(async () => {
         await this.instance().start();
       });
     }
+  }
+
+  /**
+   * Gets the current audio context.
+   */
+  static get audioContext(): AudioContext | null {
+    return this.instance()._audioContext;
+  }
+
+  /**
+   * Flag to check if it is currently recording.
+   */
+  static get isRecording(): boolean {
+    return this.instance()._state === WvpState.STARTED;
   }
 
   /**
