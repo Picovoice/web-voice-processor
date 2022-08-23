@@ -44,11 +44,11 @@
           document.body.appendChild(p);
         }
 
-        handle = window.WebVoiceProcessor.WebVoiceProcessor.instance({vuMeterCallback})
+        const vuMeterEngine = new WebVoiceProcessor.VuMeterEngine(vuMeterCallback);
 
         document.getElementById('start-audio-dump').onclick = () => {
           writeMessage('Starting Audio dump ...');
-          let blobPromise = handle.audioDump(10000);
+          let blobPromise = WebVoiceProcessor.WebVoiceProcessor.audioDump(10000);
           document.getElementById('start-audio-dump').disabled = true;
           let downloadLink = document.getElementById('audio-download-link');
           downloadLink.style.visibility = 'hidden';
@@ -72,31 +72,20 @@
         document.getElementById('start').onclick = () => {
           document.getElementById('start').disabled = true;
           writeMessage('Starting ...');
-          handle.start().catch(error => {
+          WebVoiceProcessor.WebVoiceProcessor.subscribe(vuMeterEngine).catch(error => {
             writeMessage('Error initializing WebVoiceProcessor: ' + error);
           })
           document.getElementById('stop').disabled = false;
-          document.getElementById('pause').disabled = false;
           document.getElementById('start-audio-dump').disabled = false;
         };
 
         document.getElementById('stop').onclick = () => {
           document.getElementById('stop').disabled = true;
           writeMessage('Stopping ...');
-          handle.stop();
-          document.getElementById('start').disabled = false;
-          document.getElementById('pause').disabled = true;
-          document.getElementById('start-audio-dump').disabled = true;
-        };
-
-        document.getElementById('pause').onclick = () => {
-          document.getElementById('pause').disabled = true;
-          writeMessage('Pausing ...');
-          handle.pause();
+          WebVoiceProcessor.WebVoiceProcessor.unsubscribe(vuMeterEngine);
           document.getElementById('start').disabled = false;
           document.getElementById('start-audio-dump').disabled = true;
         };
-
       });
     </script>
   </head>
@@ -107,7 +96,6 @@
     </div>
     <button id="stop" disabled>Stop Recording</button>
     <button id="start">Start Recording</button>
-    <button id="pause" disabled>Pause Recording</button>
     <button id="start-audio-dump" disabled>Start Audio Dump (10s)</button>
     <a href="#" style="visibility: hidden" download="recorded.wav" id="audio-download-link"
       >Download PCM in wav format</a
