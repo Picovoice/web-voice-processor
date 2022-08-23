@@ -98,8 +98,8 @@ const engine = {
   }
 }
 
-WebVoiceProcessor.subscribe(engine);
-WebVoiceProcessor.subscribe(worker);
+await WebVoiceProcessor.subscribe(engine);
+await WebVoiceProcessor.subscribe(worker);
 ```
 
 An `engine` is either a [Web Workers](<(https://developer.mozilla.org/en-US/docs/Web/API/Worker)>) or an object
@@ -126,8 +126,8 @@ This is async due to its [Web Audio API microphone request](https://developer.mo
 Unsubscribing the engines initially subscribed will stop audio recorder.
 
 ```javascript
-WebVoiceProcessor.unsubscribe(engine);
-WebVoiceProcessor.unsubscribe(worker);
+await WebVoiceProcessor.unsubscribe(engine);
+await WebVoiceProcessor.unsubscribe(worker);
 ```
 
 ### Options
