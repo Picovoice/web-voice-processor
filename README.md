@@ -88,7 +88,7 @@ The IIFE version of the library adds `WebVoiceProcessor` to the `window` global 
 ### Start listening
 
 WebVoiceProcessor follows the subscribe/unsubscribe pattern. WebVoiceProcessor
-will automatically start recording audio as soon as one engine is subscribed.
+will automatically start recording audio as soon as an engine is subscribed.
 
 ```javascript
 const worker = new Worker('${WORKER_PATH}');
@@ -100,6 +100,8 @@ const engine = {
 
 await WebVoiceProcessor.subscribe(engine);
 await WebVoiceProcessor.subscribe(worker);
+// or
+await WebVoiceProcessor.subscribe([engine, worker]);
 ```
 
 An `engine` is either a [Web Workers](<(https://developer.mozilla.org/en-US/docs/Web/API/Worker)>) or an object
@@ -128,6 +130,8 @@ Unsubscribing the engines initially subscribed will stop audio recorder.
 ```javascript
 await WebVoiceProcessor.unsubscribe(engine);
 await WebVoiceProcessor.unsubscribe(worker);
+//or
+await WebVoiceProcessor.unsubscribe([engine, worker]);
 ```
 
 ### Reset

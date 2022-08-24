@@ -79,22 +79,24 @@ export class WebVoiceProcessor {
   /**
    * Subscribe an engine. A subscribed engine will receive audio frames via
    * `.postMessage({command: 'process', inputFrame: inputFrame})`.
-   * @param engine The engine to unsubscribe.
+   * @param engines The engine(s) to subscribe.
    */
-  public static async subscribe(engine: PvEngine): Promise<void> {
-    if (engine.worker) {
-      if (engine.worker.postMessage && typeof engine.worker.postMessage === 'function') {
-        this.instance()._engines.add(engine);
+  public static async subscribe(engines: PvEngine | PvEngine[]): Promise<void> {
+    for (const engine of (Array.isArray(engines) ? engines : [engines])) {
+      if (engine.worker) {
+        if (engine.worker.postMessage && typeof engine.worker.postMessage === 'function') {
+          this.instance()._engines.add(engine);
+        } else {
+          throw new Error("Engine must have a 'onmessage' handler.");
+        }
       } else {
-        throw new Error("Engine must have a 'onmessage' handler.");
-      }
-    } else {
-      if (engine.postMessage && typeof engine.postMessage === 'function') {
-        this.instance()._engines.add(engine);
-      } else if (engine.onmessage && typeof engine.onmessage === 'function') {
-        this.instance()._engines.add(engine);
-      } else {
-        throw new Error("Engine must have a 'onmessage' handler.");
+        if (engine.postMessage && typeof engine.postMessage === 'function') {
+          this.instance()._engines.add(engine);
+        } else if (engine.onmessage && typeof engine.onmessage === 'function') {
+          this.instance()._engines.add(engine);
+        } else {
+          throw new Error("Engine must have a 'onmessage' handler.");
+        }
       }
     }
 
@@ -105,10 +107,12 @@ export class WebVoiceProcessor {
 
   /**
    * Unsubscribe an engine.
-   * @param engine The engine to unsubscribe.
+   * @param engines The engine(s) to unsubscribe.
    */
-  public static async unsubscribe(engine: PvEngine): Promise<void> {
-    this.instance()._engines.delete(engine);
+  public static async unsubscribe(engines: PvEngine | PvEngine[]): Promise<void> {
+    for (const engine of (Array.isArray(engines) ? engines : [engines])) {
+      this.instance()._engines.delete(engine);
+    }
 
     if (this.instance()._engines.size === 0 && this.instance()._state !== WvpState.STOPPED) {
       await this.instance().stop();
