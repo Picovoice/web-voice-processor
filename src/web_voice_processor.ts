@@ -19,7 +19,6 @@ import recorderProcessor from './audio_worklet/recorder_processor.js';
 import { PvEngine, WebVoiceProcessorOptions, WvpState } from './types';
 
 import { AudioDumpEngine } from './engines/audio_dump_engine';
-import VuMeterWorker from 'web-worker:./engines/vu_meter_worker.ts';
 
 /**
  * Obtain microphone permission and audio stream;
@@ -35,35 +34,25 @@ export class WebVoiceProcessor {
   private _downsamplerWorker: DownsamplerWorker | null = null;
 
   private readonly _engines: Set<PvEngine>;
-  private _options: WebVoiceProcessorOptions;
+  private _options: WebVoiceProcessorOptions = {};
   private _state: WvpState;
-
-  private _vuMeterCallback?: (dB: number) => void;
-  private _vuMeterWorker?: Worker;
 
   private static _instance: WebVoiceProcessor | undefined;
 
-  private constructor(options: WebVoiceProcessorOptions) {
+  private constructor() {
     this._engines = new Set();
-    this._options = options;
+    this._options = {};
     this._state = WvpState.STOPPED;
-    this._vuMeterCallback = options.vuMeterCallback;
   }
 
   /**
    * Gets the WebVoiceProcessor singleton instance.
    *
-   * @param options Startup options.
    * @return WebVoiceProcessor singleton.
    */
-  public static instance(
-    options: WebVoiceProcessorOptions = {},
-  ): WebVoiceProcessor {
+  private static instance(): WebVoiceProcessor {
     if (!this._instance) {
-      this._instance = new WebVoiceProcessor(options);
-    } else {
-      this._instance._options = options;
-      this._instance._vuMeterCallback = options.vuMeterCallback;
+      this._instance = new WebVoiceProcessor();
     }
     return this._instance;
   }
@@ -74,9 +63,9 @@ export class WebVoiceProcessor {
    * @param durationMs the duration of the recording, in milliseconds
    * @return the data in Blob format, wrapped in a promise
    */
-  public async audioDump(durationMs: number = 3000): Promise<Blob> {
+  public static async audioDump(durationMs: number = 3000): Promise<Blob> {
     const audioDumpEngine = new AudioDumpEngine();
-    this.subscribe(audioDumpEngine);
+    await this.subscribe(audioDumpEngine);
     return new Promise<Blob>(resolve => {
       // @ts-ignore
       this.audioDumpEngine = audioDumpEngine;
@@ -90,39 +79,91 @@ export class WebVoiceProcessor {
   /**
    * Subscribe an engine. A subscribed engine will receive audio frames via
    * `.postMessage({command: 'process', inputFrame: inputFrame})`.
-   * @param engine The engine to unsubscribe.
+   * @param engines The engine(s) to subscribe.
    */
-  public subscribe(engine: PvEngine): void {
-    if (engine.worker) {
-      if (engine.worker.postMessage && typeof engine.worker.postMessage === 'function') {
-        this._engines.add(engine);
+  public static async subscribe(engines: PvEngine | PvEngine[]): Promise<void> {
+    for (const engine of (Array.isArray(engines) ? engines : [engines])) {
+      if (engine.worker) {
+        if (engine.worker.postMessage && typeof engine.worker.postMessage === 'function') {
+          this.instance()._engines.add(engine);
+        } else {
+          throw new Error("Engine must have a 'onmessage' handler.");
+        }
       } else {
-        throw new Error("Engine must have a 'onmessage' handler.");
+        if (engine.postMessage && typeof engine.postMessage === 'function') {
+          this.instance()._engines.add(engine);
+        } else if (engine.onmessage && typeof engine.onmessage === 'function') {
+          this.instance()._engines.add(engine);
+        } else {
+          throw new Error("Engine must have a 'onmessage' handler.");
+        }
       }
-    } else {
-      if (engine.postMessage && typeof engine.postMessage === 'function') {
-        this._engines.add(engine);
-      } else if (engine.onmessage && typeof engine.onmessage === 'function') {
-        this._engines.add(engine);
-      } else {
-        throw new Error("Engine must have a 'onmessage' handler.");
-      }
+    }
+
+    if (this.instance()._engines.size > 0 && this.instance()._state !== WvpState.STARTED) {
+      await this.instance().start();
     }
   }
 
   /**
    * Unsubscribe an engine.
-   * @param engine The engine to unsubscribe.
+   * @param engines The engine(s) to unsubscribe.
    */
-  public unsubscribe(engine: PvEngine): void {
-    this._engines.delete(engine);
+  public static async unsubscribe(engines: PvEngine | PvEngine[]): Promise<void> {
+    for (const engine of (Array.isArray(engines) ? engines : [engines])) {
+      this.instance()._engines.delete(engine);
+    }
+
+    if (this.instance()._engines.size === 0 && this.instance()._state !== WvpState.STOPPED) {
+      await this.instance().stop();
+    }
+  }
+
+  /**
+   * Removes all engines and stops recording audio.
+   */
+  static async reset(): Promise<void> {
+    this.instance()._engines.clear();
+    await this.instance().stop();
+  }
+
+  /**
+   * Set new WebVoiceProcessor options.
+   * If forceUpdate is not set to true, all engines must be unsubscribed and subscribed
+   * again in order for the recorder to take the new changes.
+   * Using forceUpdate might allow a small gap where audio frames is not received.
+   *
+   * @param options WebVoiceProcessor recording options.
+   * @param forceUpdate Flag to force update recorder with new options.
+   */
+  static setOptions(options: WebVoiceProcessorOptions, forceUpdate = false): void {
+    this.instance()._options = options;
+    if (forceUpdate) {
+      this.instance().stop().then(async () => {
+        await this.instance().start();
+      });
+    }
+  }
+
+  /**
+   * Gets the current audio context.
+   */
+  static get audioContext(): AudioContext | null {
+    return this.instance()._audioContext;
+  }
+
+  /**
+   * Flag to check if it is currently recording.
+   */
+  static get isRecording(): boolean {
+    return this.instance()._state === WvpState.STARTED;
   }
 
   /**
    * Resumes or starts audio context. Also initializes downsampler, capture device and other configurations
    * based on `options`.
    */
-  public start(): Promise<void> {
+  private start(): Promise<void> {
     return new Promise((resolve, reject) => {
       this._mutex
         .runExclusive(async () => {
@@ -136,38 +177,11 @@ export class WebVoiceProcessor {
             recorderNode.port.onmessage = (event: MessageEvent): void => {
               this.recorderCallback(event.data.buffer);
             };
-
-            if (this._vuMeterCallback) {
-              this.setupVuMeter();
-            }
             this._state = WvpState.STARTED;
           }
 
-          if (this._state === WvpState.PAUSED) {
+          if (this._audioContext !== null && this.isSuspended) {
             await this._audioContext.resume();
-            this._state = WvpState.STARTED;
-          }
-        })
-        .then(() => {
-          resolve();
-        })
-        .catch((error: any) => {
-          reject(error);
-        });
-    });
-  }
-
-  /**
-   * Sets audio context in a suspended state. Engines will stop receiving frames
-   * during this time.
-   */
-  public pause(): Promise<void> {
-    return new Promise((resolve, reject) => {
-      this._mutex
-        .runExclusive(async () => {
-          if (this._audioContext !== null && this._state !== WvpState.PAUSED) {
-            await this._audioContext.suspend();
-            this._state = WvpState.PAUSED;
           }
         })
         .then(() => {
@@ -184,7 +198,7 @@ export class WebVoiceProcessor {
    * instance created initially.
    * AudioContext is kept alive to be used when starting again.
    */
-  public stop(): Promise<void> {
+  private stop(): Promise<void> {
     return new Promise((resolve, reject) => {
       this._mutex
         .runExclusive(async () => {
@@ -195,10 +209,6 @@ export class WebVoiceProcessor {
               track.stop();
             });
 
-            if (this._vuMeterWorker) {
-              this.unsubscribe(this._vuMeterWorker);
-              this._vuMeterWorker.terminate();
-            }
             this._state = WvpState.STOPPED;
           }
         })
@@ -212,34 +222,17 @@ export class WebVoiceProcessor {
   }
 
   /**
-   * Gets the current audio context.
+   * Flag to check if audio context has been suspended.
    */
-  get audioContext(): AudioContext | null {
-    return this._audioContext;
-  }
-
-  /**
-   * Flag to check if it is currently recording.
-   */
-  get isRecording(): boolean {
-    return this._state === WvpState.STARTED;
+  private get isSuspended(): boolean {
+    return this._audioContext?.state === "suspended";
   }
 
   /**
    * Flag to check if audio context has been released.
    */
-  get isReleased(): boolean {
+  private get isReleased(): boolean {
     return this._audioContext?.state === "closed";
-  }
-
-  private setupVuMeter(): void {
-    this._vuMeterWorker = new VuMeterWorker();
-    this.subscribe(this._vuMeterWorker);
-    this._vuMeterWorker.onmessage = (e: MessageEvent): void => {
-      if (this._vuMeterCallback) {
-        this._vuMeterCallback(e.data);
-      }
-    };
   }
 
   private async recorderCallback(inputFrames: Array<Float32Array>): Promise<void> {

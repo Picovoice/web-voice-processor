@@ -87,22 +87,8 @@ The IIFE version of the library adds `WebVoiceProcessor` to the `window` global 
 
 ### Start listening
 
-Get the WebVoiceProcessor with the `instance` async static method. This will return the singleton instance:
-
-```javascript
-let options = {
-  frameLength: 512,
-  outputSampleRate: 16000,
-  deviceId: null,
-  filterOrder: 50,
-  vuMeterCallback: undefined,
-}; // optional options
-
-let handle = await WebVoiceProcessor.WebVoiceProcessor.instance(options);
-```
-
-WebVoiceProcessor follows the subscribe/unsubscribe pattern. Every engine that is subscribed will be receiving audio
-frames as soon as it is ready:
+WebVoiceProcessor follows the subscribe/unsubscribe pattern. WebVoiceProcessor
+will automatically start recording audio as soon as an engine is subscribed.
 
 ```javascript
 const worker = new Worker('${WORKER_PATH}');
@@ -112,11 +98,10 @@ const engine = {
   }
 }
 
-handle.subscribe(engine);
-handle.subscribe(worker);
-
-handle.unsubscribe(engine);
-handle.unsubscribe(worker);
+await WebVoiceProcessor.subscribe(engine);
+await WebVoiceProcessor.subscribe(worker);
+// or
+await WebVoiceProcessor.subscribe([engine, worker]);
 ```
 
 An `engine` is either a [Web Workers](<(https://developer.mozilla.org/en-US/docs/Web/API/Worker)>) or an object
@@ -136,53 +121,58 @@ where `e.data.inputFrame` is an `Int16Array` of `frameLength` audio samples.
 
 For examples of using engines, look at [src/engines](/package/src/engines).
 
-To start recording, call `start` after getting the instance. This will start the Audio Context, get microphone permissions
-and start recording.
-
-```javascript
-await handle.start();
-```
-
 This is async due to its [Web Audio API microphone request](https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia). The promise will be rejected if the user refuses permission, no suitable devices are found, etc. Your calling code should anticipate the possibility of rejection. When the promise resolves, the WebVoiceProcessor is running.
-
-### Pause listening
-
-Pause processing (microphone and Web Audio context will still be active):
-
-```javascript
-await handle.pause();
-```
 
 ### Stop Listening
 
-Close the microphone [MediaStream](https://developer.mozilla.org/en-US/docs/Web/API/MediaStream). This will free all
-used resources including microphone's resources and audio context.
+Unsubscribing the engines initially subscribed will stop audio recorder.
 
 ```javascript
-await handle.stop();
+await WebVoiceProcessor.unsubscribe(engine);
+await WebVoiceProcessor.unsubscribe(worker);
+//or
+await WebVoiceProcessor.unsubscribe([engine, worker]);
+```
+
+### Reset
+
+Use the `reset` function to remove all engines and stop recording audio.
+
+```javascript
+await WebVoiceProcessor.reset();
 ```
 
 ### Options
 
-To update the audio settings in `WebVoiceProcessor`, call the `instance` function with new `options`. 
-Then call `stop`, and `start` so it can start recording audio with the new settings.
-This step is required since the `audioContext` has to be recreated to reflect the changes.
+To update the audio settings in `WebVoiceProcessor`, use the `setOptions` function:
+
+```javascript
+// Override default options
+let options = {
+  frameLength: 512,
+  outputSampleRate: 16000,
+  deviceId: null,
+  filterOrder: 50
+};
+
+WebVoiceProcessor.setOptions(options);
+```
 
 ### VuMeter
 
 `WebVoiceProcessor` includes a built-in engine which returns the [VU meter](https://en.wikipedia.org/wiki/VU_meter).
-To capture the VU meter value, create a callback and pass it in the `options` parameter:
+To capture the VU meter value, create a VuMeterEngine instance and subscribe it to the engine:
 
 ```javascript
 function vuMeterCallback(dB) {
   console.log(dB)
 }
 
-const handle = await window.WebVoiceProcessor.WebVoiceProcessor.instance({vuMeterCallback});
+const vuMeterEngine = new VuMeterEngine(vuMeterCallback);
+WebVoiceProcessor.subscribe(vuMeterEngine);
 ```
 
 The `vuMeterCallback` should expected a number in terms of [dBFS](https://en.wikipedia.org/wiki/DBFS) within the range of [-96, 0].
-
 
 ## Build from source
 

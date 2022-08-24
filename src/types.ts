@@ -12,7 +12,6 @@
 export enum WvpState {
   STARTED,
   STOPPED,
-  PAUSED
 }
 
 export type WvpMessageEvent = {
@@ -38,8 +37,6 @@ export type WebVoiceProcessorOptions = {
   deviceId?: string | null;
   /** Filter order (default: 50) */
   filterOrder?: number
-  /** VU meter callback (default: undefined) */
-  vuMeterCallback?: (dB: number) => void;
 };
 
 export type DownsamplerWorkerInitRequest = {
