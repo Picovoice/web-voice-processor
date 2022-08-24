@@ -179,6 +179,10 @@ export class WebVoiceProcessor {
             };
             this._state = WvpState.STARTED;
           }
+
+          if (this._audioContext !== null && this.isSuspended) {
+            await this._audioContext.resume();
+          }
         })
         .then(() => {
           resolve();
@@ -215,6 +219,13 @@ export class WebVoiceProcessor {
           reject(error);
         });
     });
+  }
+
+  /**
+   * Flag to check if audio context has been suspended.
+   */
+  private get isSuspended(): boolean {
+    return this._audioContext?.state === "suspended";
   }
 
   /**
