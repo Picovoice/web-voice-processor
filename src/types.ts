@@ -37,8 +37,6 @@ export type WebVoiceProcessorOptions = {
   deviceId?: string | null;
   /** Filter order (default: 50) */
   filterOrder?: number
-  /** Input buffer size (default: 4096) */
-  inputBufferLength?: number;
 };
 
 export type ResamplerWorkerInitRequest = {
