@@ -13,7 +13,7 @@ import { Mutex } from 'async-mutex';
 
 import { base64ToUint8Array } from '@picovoice/web-utils';
 
-import DownsamplerWorker from './downsampler_worker';
+import ResamplerWorker from './resampler_worker';
 import recorderProcessor from './audio_worklet/recorder_processor.js';
 
 import { PvEngine, WebVoiceProcessorOptions, WvpState } from './types';
@@ -22,7 +22,7 @@ import { AudioDumpEngine } from './engines/audio_dump_engine';
 
 /**
  * Obtain microphone permission and audio stream;
- * Down sample audio into 16kHz single-channel PCM for speech recognition (via DownsamplerWorker).
+ * Down sample audio into 16kHz single-channel PCM for speech recognition (via ResamplerWorker).
  * Continuously send audio frames to voice processing engines.
  */
 export class WebVoiceProcessor {
@@ -31,7 +31,7 @@ export class WebVoiceProcessor {
   private _audioContext: AudioContext | null = null;
   private _microphoneStream: MediaStream | null = null;
   private _recorderNode: AudioWorkletNode | null = null;
-  private _downsamplerWorker: DownsamplerWorker | null = null;
+  private _resamplerWorker: ResamplerWorker | null = null;
 
   private readonly _engines: Set<PvEngine>;
   private _options: WebVoiceProcessorOptions = {};
@@ -160,7 +160,7 @@ export class WebVoiceProcessor {
   }
 
   /**
-   * Resumes or starts audio context. Also initializes downsampler, capture device and other configurations
+   * Resumes or starts audio context. Also initializes resampler, capture device and other configurations
    * based on `options`.
    */
   private start(): Promise<void> {
@@ -168,14 +168,14 @@ export class WebVoiceProcessor {
       this._mutex
         .runExclusive(async () => {
           if (this._audioContext === null || this._state === WvpState.STOPPED || this.isReleased) {
-            const { audioContext, microphoneStream, recorderNode, downsamplerWorker } = await this.setupRecorder(this._options);
+            const { audioContext, microphoneStream, recorderNode, resamplerWorker } = await this.setupRecorder(this._options);
             this._audioContext = audioContext;
             this._microphoneStream = microphoneStream;
             this._recorderNode = recorderNode;
-            this._downsamplerWorker = downsamplerWorker;
+            this._resamplerWorker = resamplerWorker;
 
             recorderNode.port.onmessage = (event: MessageEvent): void => {
-              this.recorderCallback(event.data.buffer);
+              resamplerWorker.process(event.data.buffer[0]);
             };
             this._state = WvpState.STARTED;
           }
@@ -203,7 +203,7 @@ export class WebVoiceProcessor {
       this._mutex
         .runExclusive(async () => {
           if (this._audioContext !== null && this._state !== WvpState.STOPPED) {
-            this._downsamplerWorker?.terminate();
+            this._resamplerWorker?.terminate();
             this._recorderNode?.port.close();
             this._microphoneStream?.getAudioTracks().forEach(track => {
               track.stop();
@@ -235,12 +235,8 @@ export class WebVoiceProcessor {
     return this._audioContext?.state === "closed";
   }
 
-  private async recorderCallback(inputFrames: Array<Float32Array>): Promise<void> {
-    if (this._downsamplerWorker === null) {
-      return;
-    }
+  private recorderCallback(inputFrame: Int16Array): void {
 
-    const inputFrame = await this._downsamplerWorker.process(inputFrames[0]);
     for (const engine of this._engines) {
       if (engine.worker && engine.worker.postMessage) {
         engine.worker.postMessage({
@@ -294,11 +290,12 @@ export class WebVoiceProcessor {
 
     const audioSource = audioContext.createMediaStreamSource(microphoneStream);
 
-    const downsamplerWorker = await DownsamplerWorker.create(
+    const resamplerWorker = await ResamplerWorker.create(
       audioSource.context.sampleRate,
       outputSampleRate,
       filterOrder,
       frameLength,
+      this.recorderCallback.bind(this),
     );
 
     const recorderNode = new window.AudioWorkletNode(
@@ -319,7 +316,7 @@ export class WebVoiceProcessor {
       audioContext,
       microphoneStream,
       recorderNode,
-      downsamplerWorker
+      resamplerWorker
     };
   }
 }

@@ -7,19 +7,19 @@ import { browserCompatibilityCheck } from './utils';
 
 import { VuMeterEngine } from './engines/vu_meter_engine';
 
-import downsamplerWasm from '../lib/pv_downsampler.wasm';
+import resamplerWasm from '../lib/pv_resampler.wasm';
 
-import Downsampler from './downsampler';
-import DownsamplerWorker from './downsampler_worker';
+import Resampler from './resampler';
+import ResamplerWorker from './resampler_worker';
 
-Downsampler.setWasm(downsamplerWasm);
-DownsamplerWorker.setWasm(downsamplerWasm);
+Resampler.setWasm(resamplerWasm);
+ResamplerWorker.setWasm(resamplerWasm);
 
 export {
-  browserCompatibilityCheck,
-  DownsamplerWorker,
-  WvpMessageEvent,
+  ResamplerWorker,
+  VuMeterEngine,
   WebVoiceProcessor,
   WebVoiceProcessorOptions,
-  VuMeterEngine
+  WvpMessageEvent,
+  browserCompatibilityCheck,
 };

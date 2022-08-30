@@ -12,67 +12,81 @@
 // @ts-ignore
 declare const self: ServiceWorkerGlobalScope;
 
-import { DownsamplerWorkerRequest } from './types';
-import Downsampler from './downsampler';
+import {ResamplerWorkerRequest} from './types';
+import Resampler from './resampler';
+
+let accumulator: BufferAccumulator | null = null;
+let resampler: Resampler | null = null;
 
 class BufferAccumulator {
   private readonly _frameLength: number;
-  private readonly _buffer: Int16Array;
+  private readonly _inputBufferLength: number;
+
+  private _buffer: Int16Array;
 
   private _copied: number;
 
-  constructor(frameLength = 512) {
+  constructor(frameLength: number, inputBufferLength: number) {
     this._frameLength = frameLength;
+    this._inputBufferLength = inputBufferLength;
     this._buffer = new Int16Array(frameLength);
     this._copied = 0;
   }
 
-  public process(frames: Int16Array): void {
+  public process(frames: Int16Array | Float32Array): void {
     let remaining = frames.length;
 
     while (remaining > 0) {
-      const toCopy = Math.min(remaining, this._frameLength - this._copied);
-      this._buffer.set(frames.slice(0, toCopy), this._copied);
+      const toProcess = Math.min(remaining, this._inputBufferLength);
+      const outputBuffer = new Int16Array(this._frameLength);
+      const processedSamples = resampler?.process(frames.slice(0, toProcess), outputBuffer) ?? 0;
 
-      frames = frames.slice(toCopy, frames.length);
-      remaining -= toCopy;
-      this._copied += toCopy;
-
-      if (this._copied >= this._frameLength) {
+      const toCopy = Math.min(processedSamples, this._frameLength - this._copied);
+      this._buffer.set(outputBuffer.slice(0, toCopy), this._copied);
+      if (toCopy < processedSamples) {
         self.postMessage({
           command: 'ok',
           result: this._buffer,
         });
         this._copied = 0;
+        this._buffer = new Int16Array(this._frameLength);
+        this._buffer.set(outputBuffer.slice(toCopy, processedSamples), 0);
+        this._copied = processedSamples - toCopy;
+      } else {
+        this._copied += toCopy;
       }
+      frames = frames.slice(toProcess, frames.length);
+      remaining -= toProcess;
     }
   }
 }
 
-let accumulator: BufferAccumulator | null = null;
-let downsampler: Downsampler | null = null;
-onmessage = async function(event: MessageEvent<DownsamplerWorkerRequest>): Promise<void> {
+onmessage = async function (event: MessageEvent<ResamplerWorkerRequest>): Promise<void> {
   switch (event.data.command) {
     case 'init':
-      if (downsampler !== null) {
+      if (resampler !== null) {
         self.postMessage({
           command: 'error',
-          message: 'Downsampler already initialized',
+          message: 'Resampler already initialized',
         });
         return;
       }
       try {
-        Downsampler.setWasm(event.data.wasm);
-        downsampler = await Downsampler.create(
+        Resampler.setWasm(event.data.wasm);
+        resampler = await Resampler.create(
           event.data.inputSampleRate,
           event.data.outputSampleRate,
           event.data.filterOrder,
           event.data.frameLength,
         );
-        accumulator = new BufferAccumulator(event.data.frameLength);
+
+        accumulator = new BufferAccumulator(
+          resampler.frameLength,
+          resampler.inputBufferLength);
+
         self.postMessage({
           command: 'ok',
-          version: downsampler.version,
+          version: resampler.version,
         });
       } catch (e: any) {
         self.postMessage({
@@ -82,22 +96,18 @@ onmessage = async function(event: MessageEvent<DownsamplerWorkerRequest>): Promi
       }
       break;
     case 'process':
-      if (downsampler === null) {
+      if (resampler === null) {
         self.postMessage({
           command: 'error',
-          message: 'Downsampler not initialized',
+          message: 'Resampler not initialized',
         });
         return;
       }
       try {
-        const { inputFrame } = event.data;
-        const outputBuffer = new Int16Array(inputFrame.length);
-        const processed = downsampler.process(
-          inputFrame,
-          inputFrame.length,
-          outputBuffer,
-        );
-        accumulator?.process(outputBuffer.slice(0, processed));
+        const {inputFrame} = event.data;
+        console.log('before process');
+        accumulator?.process(inputFrame);
+        console.log('after process');
       } catch (e: any) {
         self.postMessage({
           command: 'error',
@@ -107,45 +117,45 @@ onmessage = async function(event: MessageEvent<DownsamplerWorkerRequest>): Promi
       }
       break;
     case 'reset':
-      if (downsampler === null) {
+      if (resampler === null) {
         self.postMessage({
           command: 'error',
-          message: 'Downsampler not initialized',
+          message: 'Resampler not initialized',
         });
         return;
       }
-      downsampler.reset();
+      resampler.reset();
       self.postMessage({
         command: 'ok',
       });
       break;
     case 'release':
-      if (downsampler === null) {
+      if (resampler === null) {
         self.postMessage({
           command: 'error',
-          message: 'Downsampler not initialized',
+          message: 'Resampler not initialized',
         });
         return;
       }
-      downsampler.release();
-      downsampler = null;
+      resampler.release();
+      resampler = null;
       accumulator = null;
       self.postMessage({
         command: 'ok',
       });
       break;
     case 'numRequiredInputSamples':
-      if (downsampler === null) {
+      if (resampler === null) {
         self.postMessage({
           command: 'error',
-          message: 'Downsampler not initialized',
+          message: 'Resampler not initialized',
         });
         return;
       }
       try {
         self.postMessage({
           command: 'ok',
-          result: downsampler.getNumRequiredInputSamples(event.data.numSample),
+          result: resampler.getNumRequiredInputSamples(event.data.numSample),
         });
       } catch (e: any) {
         self.postMessage({
@@ -157,7 +167,7 @@ onmessage = async function(event: MessageEvent<DownsamplerWorkerRequest>): Promi
     default:
       // @ts-ignore
       // eslint-disable-next-line no-console
-      console.warn(`Unhandled message in downsampler_worker.ts: ${event.data.command}`);
+      console.warn(`Unhandled message in resampler_worker.ts: ${event.data.command}`);
       break;
   }
 };
