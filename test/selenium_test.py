@@ -111,7 +111,7 @@ def main():
             '9khz_noise_16kHz_ds_30.pcm',
             48000,
             16000,
-            70)
+            30)
         result += run_unit_test_selenium(
             root_path,
             test_url,
