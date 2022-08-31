@@ -1,132 +1,152 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <title>unit test - downsampler in WebVoiceProcessor</title>
+<head>
+  <title>unit test - resampler in WebVoiceProcessor</title>
 
-    <script src="../dist/iife/index.js"></script>
-    <script type="application/javascript">
+  <script src="../dist/iife/index.js"></script>
+  <script type="application/javascript">
 
-      let pcm = null;
-      let refPcm = null;
-      let numOutputFrames = null;
-      const frameLength = 512;
+    let pcm = null;
+    let refPcm = null;
+    let numOutputFrames = null;
+    const frameLength = 512;
 
-      window.onload = function () {
-          const pcmFileSelector = document.getElementById('pcmFile');
-          pcmFileSelector.addEventListener('change', (event) => {
-              const fileList = event.target.files;
-              const reader = new FileReader();
-              reader.addEventListener('load', (event) => {
-                  pcm = new Int16Array(event.target.result);
-                  document.getElementById("pcmFileLoaded").style.display = "block";
-                  writeMessage("Loading PCM file... done!");
-              });
-              reader.readAsArrayBuffer(fileList[0]);
-          });
+    window.onload = function () {
+      const pcmFileSelector = document.getElementById('pcmFile');
+      pcmFileSelector.addEventListener('change', (event) => {
+        const fileList = event.target.files;
+        const reader = new FileReader();
+        reader.addEventListener('load', (event) => {
+          pcm = new Int16Array(event.target.result);
+          document.getElementById("pcmFileLoaded").style.display = "block";
+          writeMessage("Loading PCM file... done!");
+        });
+        reader.readAsArrayBuffer(fileList[0]);
+      });
 
-          const refPcmFileSelector = document.getElementById('refPcmFile');
-          refPcmFileSelector.addEventListener('change', (event) => {
-              const fileList = event.target.files;
-              const reader = new FileReader();
-              reader.addEventListener('load', (event) => {
-                  refPcm = new Int16Array(event.target.result);
-                  numOutputFrames = refPcm.length / frameLength;
-              });
-              reader.readAsArrayBuffer(fileList[0]);
-              document.getElementById("refPcmFileLoaded").style.display = "block";
-              writeMessage("Loading Ref PCM file... done!");
-          });
+      const refPcmFileSelector = document.getElementById('refPcmFile');
+      refPcmFileSelector.addEventListener('change', (event) => {
+        const fileList = event.target.files;
+        const reader = new FileReader();
+        reader.addEventListener('load', (event) => {
+          refPcm = new Int16Array(event.target.result);
+          numOutputFrames = refPcm.length / frameLength;
+        });
+        reader.readAsArrayBuffer(fileList[0]);
+        document.getElementById("refPcmFileLoaded").style.display = "block";
+        writeMessage("Loading Ref PCM file... done!");
+      });
+    };
+
+    function writeMessage(message) {
+      console.log(message);
+      let p = document.createElement("p");
+      let text = document.createTextNode(message);
+      p.appendChild(text);
+      document.body.appendChild(p);
+    }
+
+    function assertEqual(result, ref, tol) {
+      for (let i = 0; i < result.length; i++) {
+        if ((Math.abs(result[i] - ref[i])) > tol) {
+          throw Error(`Error:${(Math.abs(result[i] - ref[i]))} is bigger than tolerance:${tol}`);
+        }
+      }
+      writeMessage("Test passed!");
+      document.getElementById("testComplete").style.display = "block";
+    }
+
+    async function startTest() {
+      document.getElementById("testComplete").style.display = "none";
+      const inputFrequency = parseInt(document.getElementById("inputFrequency").value);
+      const outputFrequency = parseInt(document.getElementById("outputFrequency").value);
+      const filterOrder = parseInt(document.getElementById("filterOrder").value);
+
+      writeMessage("Starting test...");
+
+      if (!pcm || !refPcm) {
+        writeMessage("PCM or reference PCM file not provided...");
+        return;
       }
 
-      function writeMessage(message) {
-          console.log(message);
-          let p = document.createElement("p");
-          let text = document.createTextNode(message);
-          p.appendChild(text);
-          document.body.appendChild(p);
+      let resampleWorker = null;
+      let numIteration = 0;
+      const result = new Int16Array(frameLength * Math.floor(numOutputFrames))
+
+      function resampleCallback(inputFrame) {
+        result.set(inputFrame, numIteration * frameLength);
+        numIteration++;
       }
 
-      function assertEqual(result, ref, tol) {
-          for (let i = 0; i < result.length; i++) {
-              if ((Math.abs(result[i] - ref[i])) > tol) {
-                  throw Error(`Error:${(Math.abs(result[i] - ref[i]))} is bigger than tolerance:${tol}`)
-              }
-          }
-          writeMessage("Test passed!");
-          document.getElementById("testComplete").style.display = "block";
+      try {
+        writeMessage("wvp is loading. Please wait...");
+        resampleWorker = await WebVoiceProcessor.ResamplerWorker.create(
+          inputFrequency,
+          outputFrequency,
+          filterOrder,
+          frameLength,
+          resampleCallback);
+        writeMessage("wvp is loaded!");
+
+        writeMessage("resampling...");
+        for (let i = 0; i < pcm.length / (frameLength); i++) {
+          resampleWorker.process(pcm.slice(i * frameLength, (i + 1) * frameLength));
+        }
+
+        await new Promise(r => setTimeout(r, 2000));
+
+        writeMessage("resampling done!");
+
+        assertEqual(result, refPcm, 1);
+
+      } catch (error) {
+        writeMessage(error);
+        writeMessage("Test failed!");
       }
+    }
+  </script>
+</head>
 
-      async function startTest() {
-          document.getElementById("testComplete").style.display = "none";
-          const inputFrequency = parseInt(document.getElementById("inputFrequency").value);
-          const outputFrequency = parseInt(document.getElementById("outputFrequency").value);
-          const filterOrder = parseInt(document.getElementById("filterOrder").value);
+<body>
+<h1>resampler test</h1>
 
-          writeMessage("Starting test...");
+<p>
+  <label for="pcmFile">Original PCM:</label>
+  <input type="file" id="pcmFile" name="pcmFile"/>
+</p>
 
-          if (!pcm || !refPcm) {
-              writeMessage("PCM or reference PCM file not provided...");
-              return
-          }
+<p>
+  <label for="refPcmFile">Reference PCM:</label>
+  <input type="file" id="refPcmFile" name="refPcmFile"/>
+</p>
 
-          let dsWorker = null;
-          try {
-              writeMessage("wvp is loading. Please wait...");
-              dsWorker = await WebVoiceProcessor.DownsamplerWorker.create(
-                  inputFrequency,
-                  outputFrequency,
-                  filterOrder,
-                  pcm.length);
-            let result = await dsWorker.process(pcm);
-            assertEqual(result, refPcm, 5);
-          } catch (error) {
-              writeMessage(error);
-              writeMessage("Test failed!");
-          }
-      }
-    </script>
-  </head>
+<p>
+  <label for="filterOrder">Filter order:</label>
+  <input type="text" id="filterOrder" name="filterOrder"/>
+</p>
 
-  <body>
-    <h1>downsampler test</h1>
+<p>
+  <label for="inputFrequency">Input Frequency:</label>
+  <input type="text" id="inputFrequency" name="inputFrequency"/>
+</p>
 
-    <p>
-      <label for="pcmFile">Original PCM:</label>
-      <input type="file" id="pcmFile" name="pcmFile" />
-    </p>
+<p>
+  <label for="outputFrequency">Output Frequency:</label>
+  <input type="text" id="outputFrequency" name="outputFrequency"/>
+</p>
 
-    <p>
-      <label for="refPcmFile">Reference PCM:</label>
-      <input type="file" id="refPcmFile" name="refPcmFile" />
-    </p>
+<input
+        type="button"
+        id="submit"
+        value="Test Resampler"
+        onclick="startTest()"
+/>
 
-    <p>
-      <label for="filterOrder">Filter order:</label>
-      <input type="text" id="filterOrder" name="filterOrder" />
-    </p>
+<br/>
 
-    <p>
-      <label for="inputFrequency">Input Frequency:</label>
-      <input type="text" id="inputFrequency" name="inputFrequency" />
-    </p>
-
-    <p>
-      <label for="outputFrequency">Output Frequency:</label>
-      <input type="text" id="outputFrequency" name="outputFrequency" />
-    </p>
-
-    <input
-      type="button"
-      id="submit"
-      value="Test Downsampler"
-      onclick="startTest()"
-    />
-
-    <br />
-
-    <h4 id="pcmFileLoaded" style="display: none">PCM file loaded!</h4>
-    <h4 id="refPcmFileLoaded" style="display: none">Ref PCM file loaded!</h4>
-    <h4 id="testComplete" style="display: none">Test Complete!</h4>
-    <hr />
-  </body>
+<h4 id="pcmFileLoaded" style="display: none">PCM file loaded!</h4>
+<h4 id="refPcmFileLoaded" style="display: none">Ref PCM file loaded!</h4>
+<h4 id="testComplete" style="display: none">Test Complete!</h4>
+<hr/>
+</body>
 </html>

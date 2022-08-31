@@ -39,7 +39,7 @@ export type WebVoiceProcessorOptions = {
   filterOrder?: number
 };
 
-export type DownsamplerWorkerInitRequest = {
+export type ResamplerWorkerInitRequest = {
   command: 'init';
   wasm: string;
   inputSampleRate: number;
@@ -48,61 +48,61 @@ export type DownsamplerWorkerInitRequest = {
   filterOrder: number;
 };
 
-export type DownsamplerWorkerProcessRequest = {
+export type ResamplerWorkerProcessRequest = {
   command: 'process';
   inputFrame: Float32Array | Int16Array;
 };
 
-export type DownsamplerWorkerResetRequest = {
+export type ResamplerWorkerResetRequest = {
   command: 'reset';
 };
 
-export type DownsamplerWorkerReleaseRequest = {
+export type ResamplerWorkerReleaseRequest = {
   command: 'release';
 };
 
-export type DownsamplerWorkerNumRequiredInputSamplesRequest = {
+export type ResamplerWorkerNumRequiredInputSamplesRequest = {
   command: 'numRequiredInputSamples';
   numSample: number;
 };
 
-export type DownsamplerWorkerRequest =
-  | DownsamplerWorkerInitRequest
-  | DownsamplerWorkerProcessRequest
-  | DownsamplerWorkerResetRequest
-  | DownsamplerWorkerReleaseRequest
-  | DownsamplerWorkerNumRequiredInputSamplesRequest;
+export type ResamplerWorkerRequest =
+  | ResamplerWorkerInitRequest
+  | ResamplerWorkerProcessRequest
+  | ResamplerWorkerResetRequest
+  | ResamplerWorkerReleaseRequest
+  | ResamplerWorkerNumRequiredInputSamplesRequest;
 
-export type DownsamplerWorkerFailureResponse = {
+export type ResamplerWorkerFailureResponse = {
   command: 'failed' | 'error';
   message: string;
 };
 
-export type DownsamplerWorkerInitResponse = DownsamplerWorkerFailureResponse | {
+export type ResamplerWorkerInitResponse = ResamplerWorkerFailureResponse | {
   command: 'ok';
   version: string;
 };
 
-export type DownsamplerWorkerProcessResponse = DownsamplerWorkerFailureResponse | {
+export type ResamplerWorkerProcessResponse = ResamplerWorkerFailureResponse | {
   command: 'ok';
   result: Int16Array;
 };
 
-export type DownsamplerWorkerResetResponse = DownsamplerWorkerFailureResponse | {
+export type ResamplerWorkerResetResponse = ResamplerWorkerFailureResponse | {
   command: 'ok';
 };
 
-export type DownsamplerWorkerReleaseResponse = DownsamplerWorkerFailureResponse | {
+export type ResamplerWorkerReleaseResponse = ResamplerWorkerFailureResponse | {
   command: 'ok';
 };
 
-export type DownsamplerWorkerNumRequiredInputSamplesResponse = DownsamplerWorkerFailureResponse | {
+export type ResamplerWorkerNumRequiredInputSamplesResponse = ResamplerWorkerFailureResponse | {
   command: 'ok';
   result: number;
 };
 
-export type DownsamplerWorkerResponse =
-  DownsamplerWorkerInitResponse |
-  DownsamplerWorkerProcessResponse |
-  DownsamplerWorkerResetResponse |
-  DownsamplerWorkerReleaseResponse;
+export type ResamplerWorkerResponse =
+  ResamplerWorkerInitResponse |
+  ResamplerWorkerProcessResponse |
+  ResamplerWorkerResetResponse |
+  ResamplerWorkerReleaseResponse;

@@ -9,17 +9,17 @@
     specific language governing permissions and limitations under the License.
 */
 
-import DsWorker from 'web-worker:./downsampler_worker_handler.ts';
+import ResampleWorker from 'web-worker:./resampler_worker_handler.ts';
 
 import {
-  DownsamplerWorkerInitResponse,
-  DownsamplerWorkerNumRequiredInputSamplesResponse,
-  DownsamplerWorkerProcessResponse,
-  DownsamplerWorkerReleaseResponse,
-  DownsamplerWorkerResetResponse,
+  ResamplerWorkerInitResponse,
+  ResamplerWorkerNumRequiredInputSamplesResponse,
+  ResamplerWorkerProcessResponse,
+  ResamplerWorkerReleaseResponse,
+  ResamplerWorkerResetResponse,
 } from './types';
 
-export default class DownsamplerWorker {
+export default class ResamplerWorker {
   private readonly _worker: Worker;
   private readonly _version: string;
 
@@ -41,15 +41,31 @@ export default class DownsamplerWorker {
     outputSampleRate: number,
     filterOrder: number,
     frameLength: number,
-  ): Promise<DownsamplerWorker> {
-    const worker = new DsWorker();
-    const returnPromise: Promise<DownsamplerWorker> = new Promise((resolve, reject) => {
+    resampleCallback: (inputFrame: Int16Array) => void,
+  ): Promise<ResamplerWorker> {
+    const worker = new ResampleWorker();
+    const returnPromise: Promise<ResamplerWorker> = new Promise((resolve, reject) => {
       // @ts-ignore - block from GC
       this.worker = worker;
-      worker.onmessage = (event: MessageEvent<DownsamplerWorkerInitResponse>): void => {
+      worker.onmessage = (event: MessageEvent<ResamplerWorkerInitResponse>): void => {
         switch (event.data.command) {
           case 'ok':
-            resolve(new DownsamplerWorker(worker, event.data.version));
+            worker.onmessage = (ev: MessageEvent<ResamplerWorkerProcessResponse>): void => {
+              switch (ev.data.command) {
+                case 'ok':
+                  resampleCallback(ev.data.result);
+                  break;
+                case 'failed':
+                case 'error':
+                  // eslint-disable-next-line no-console
+                  console.error(ev.data.message);
+                  break;
+                default:
+                  // @ts-ignore
+                  console.error(`Unrecognized command: ${event.data.command}`);
+              }
+            };
+            resolve(new ResamplerWorker(worker, event.data.version));
             break;
           case 'failed':
           case 'error':
@@ -74,35 +90,16 @@ export default class DownsamplerWorker {
     return returnPromise;
   }
 
-  public process(inputFrame: Int16Array | Float32Array): Promise<Int16Array> {
-    const returnPromise: Promise<Int16Array> = new Promise((resolve, reject) => {
-      this._worker.onmessage = (event: MessageEvent<DownsamplerWorkerProcessResponse>): void => {
-        switch (event.data.command) {
-          case 'ok':
-            resolve(event.data.result);
-            break;
-          case 'failed':
-          case 'error':
-            reject(event.data.message);
-            break;
-          default:
-            // @ts-ignore
-            reject(`Unrecognized command: ${event.data.command}`);
-        }
-      };
-    });
-
+  public process(inputFrame: Int16Array | Float32Array): void {
     this._worker.postMessage({
       command: 'process',
       inputFrame: inputFrame,
     }, [inputFrame.buffer]);
-
-    return returnPromise;
   }
 
   public reset(): Promise<void> {
     const returnPromise: Promise<void> = new Promise((resolve, reject) => {
-      this._worker.onmessage = (event: MessageEvent<DownsamplerWorkerResetResponse>): void => {
+      this._worker.onmessage = (event: MessageEvent<ResamplerWorkerResetResponse>): void => {
         switch (event.data.command) {
           case 'ok':
             resolve();
@@ -127,7 +124,7 @@ export default class DownsamplerWorker {
 
   public release(): Promise<void> {
     const returnPromise: Promise<void> = new Promise((resolve, reject) => {
-      this._worker.onmessage = (event: MessageEvent<DownsamplerWorkerReleaseResponse>): void => {
+      this._worker.onmessage = (event: MessageEvent<ResamplerWorkerReleaseResponse>): void => {
         switch (event.data.command) {
           case 'ok':
             resolve();
@@ -156,7 +153,7 @@ export default class DownsamplerWorker {
 
   public getNumRequiredInputSamples(numSample: number): Promise<number> {
     const returnPromise: Promise<number> = new Promise((resolve, reject) => {
-      this._worker.onmessage = (event: MessageEvent<DownsamplerWorkerNumRequiredInputSamplesResponse>): void => {
+      this._worker.onmessage = (event: MessageEvent<ResamplerWorkerNumRequiredInputSamplesResponse>): void => {
         switch (event.data.command) {
           case 'ok':
             resolve(event.data.result);

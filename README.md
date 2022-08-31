@@ -53,7 +53,7 @@ window.WebVoiceProcessor.browserCompatibilityCheck();
 - 'mediaDevices' (basis for microphone enumeration / access)
 - 'WebAssembly' (required for all Picovoice engines)
 - 'webKitGetUserMedia' (legacy predecessor to getUserMedia)
-- 'Worker' (required for downsampler and for all engine processing)
+- 'Worker' (required for resampler and for all engine processing)
 
 ## Installation
 

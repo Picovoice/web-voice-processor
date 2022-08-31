@@ -16,32 +16,40 @@ import { wasiSnapshotPreview1Emulator } from './wasi_snapshot';
 
 const PV_STATUS_SUCCESS = 10000;
 
-type pv_downsampler_convert_num_samples_to_input_sample_rate_type = (objectAddress: number, frameLength: number) => number;
-type pv_downsampler_init_type = (inputFrequency: number, outputFrequency: number, order: number, objectAddressAddress: number) => number;
-type pv_downsampler_process_type = (objectAddress: number, inputBufferAddress: number, inputBufferSize: number, outputBufferAddress: number) => number;
-type pv_downsampler_reset_type = (objectAddress: number) => void;
-type pv_downsampler_delete_type = (objectAddress: number) => number;
+type pv_resampler_convert_num_samples_to_input_sample_rate_type = (objectAddress: number, frameLength: number) => number;
+type pv_resampler_convert_num_samples_to_output_sample_rate_type = (objectAddress: number, frameLength: number) => number;
+type pv_resampler_init_type = (inputFrequency: number, outputFrequency: number, order: number, objectAddressAddress: number) => number;
+type pv_resampler_process_type = (objectAddress: number, inputBufferAddress: number, inputBufferSize: number, outputBufferAddress: number) => number;
+type pv_resampler_reset_type = (objectAddress: number) => void;
+type pv_resampler_delete_type = (objectAddress: number) => number;
+type pv_resampler_version_type = () => number;
+type aligned_alloc_type = (alignment: number, size: number) => number;
 
-type DownsamplerWasmOutput = {
+type ResamplerWasmOutput = {
+  cAlignedAlloc: aligned_alloc_type;
+  frameLength: number;
   inputBufferAddress: number;
   inputFrameLength: number;
   memory: WebAssembly.Memory;
   objectAddress: number;
   outputBufferAddress: number;
-  pvDownsamplerConvertNumSamplesToInputSampleRate: pv_downsampler_convert_num_samples_to_input_sample_rate_type;
-  pvDownsamplerInit: pv_downsampler_init_type;
-  pvDownsamplerProcess: pv_downsampler_process_type;
-  pvDownsamplerReset: pv_downsampler_reset_type;
-  pvDownsamplerDelete: pv_downsampler_delete_type;
-  frameLength: number;
+  pvResamplerConvertNumSamplesToInputSampleRate: pv_resampler_convert_num_samples_to_input_sample_rate_type;
+  pvResamplerConvertNumSamplesToOutputSampleRate: pv_resampler_convert_num_samples_to_output_sample_rate_type;
+  pvResamplerDelete: pv_resampler_delete_type;
+  pvResamplerInit: pv_resampler_init_type;
+  pvResamplerProcess: pv_resampler_process_type;
+  pvResamplerReset: pv_resampler_reset_type;
   version: string;
 };
 
-class Downsampler {
-  private readonly _pvDownsamplerConvertNumSamplesToInputSampleRate: pv_downsampler_convert_num_samples_to_input_sample_rate_type;
-  private readonly _pvDownsamplerDelete: pv_downsampler_delete_type;
-  private readonly _pvDownsamplerProcess: pv_downsampler_process_type;
-  private readonly _pvDownsamplerReset: pv_downsampler_reset_type;
+class Resampler {
+  private readonly _pvResamplerConvertNumSamplesToInputSampleRate: pv_resampler_convert_num_samples_to_input_sample_rate_type;
+  private readonly _pvResamplerConvertNumSamplesToOutputSampleRate: pv_resampler_convert_num_samples_to_output_sample_rate_type;
+  private readonly _pvResamplerDelete: pv_resampler_delete_type;
+  private readonly _pvResamplerProcess: pv_resampler_process_type;
+  private readonly _pvResamplerReset: pv_resampler_reset_type;
+
+  private readonly _cAlignedAlloc: aligned_alloc_type;
 
   private readonly _inputBufferAddress: number;
   private readonly _objectAddress: number;
@@ -52,18 +60,23 @@ class Downsampler {
   private _memoryBufferView: DataView;
 
   private readonly _frameLength: number;
+  private readonly _inputBufferLength: number;
 
   private static _wasm: string;
   public static _version: string;
 
-  private constructor(handleWasm: DownsamplerWasmOutput) {
-    Downsampler._version = handleWasm.version;
+  private constructor(handleWasm: ResamplerWasmOutput) {
+    Resampler._version = handleWasm.version;
 
-    this._pvDownsamplerConvertNumSamplesToInputSampleRate =
-      handleWasm.pvDownsamplerConvertNumSamplesToInputSampleRate;
-    this._pvDownsamplerReset = handleWasm.pvDownsamplerReset;
-    this._pvDownsamplerProcess = handleWasm.pvDownsamplerProcess;
-    this._pvDownsamplerDelete = handleWasm.pvDownsamplerDelete;
+    this._pvResamplerConvertNumSamplesToInputSampleRate =
+      handleWasm.pvResamplerConvertNumSamplesToInputSampleRate;
+    this._pvResamplerConvertNumSamplesToOutputSampleRate =
+      handleWasm.pvResamplerConvertNumSamplesToOutputSampleRate;
+    this._pvResamplerReset = handleWasm.pvResamplerReset;
+    this._pvResamplerProcess = handleWasm.pvResamplerProcess;
+    this._pvResamplerDelete = handleWasm.pvResamplerDelete;
+
+    this._cAlignedAlloc = handleWasm.cAlignedAlloc;
 
     this._wasmMemory = handleWasm.memory;
     this._inputBufferAddress = handleWasm.inputBufferAddress;
@@ -74,6 +87,7 @@ class Downsampler {
     this._memoryBufferView = new DataView(handleWasm.memory.buffer);
 
     this._frameLength = handleWasm.frameLength;
+    this._inputBufferLength = handleWasm.inputFrameLength;
   }
 
   public static setWasm(wasm: string): void {
@@ -87,15 +101,15 @@ class Downsampler {
     outputFrequency: number,
     order: number,
     frameLength: number,
-  ): Promise<Downsampler> {
-    const wasmOutput = await Downsampler.initWasm(
+  ): Promise<Resampler> {
+    const wasmOutput = await Resampler.initWasm(
       inputFrequency,
       outputFrequency,
       order,
       frameLength,
     );
 
-    return new Downsampler(wasmOutput);
+    return new Resampler(wasmOutput);
   }
 
   private static async initWasm(
@@ -103,7 +117,7 @@ class Downsampler {
     outputFrequency: number,
     order: number,
     frameLength: number,
-  ): Promise<DownsamplerWasmOutput> {
+  ): Promise<ResamplerWasmOutput> {
     // A WebAssembly page has a constant size of 64KiB. -> 4MiB ~= 64 pages
     // minimum memory requirements for init: 2 pages
     const memory = new WebAssembly.Memory({ initial: 64 });
@@ -147,51 +161,53 @@ class Downsampler {
       importObject,
     );
 
-    const alignedAlloc = instance.exports.aligned_alloc as CallableFunction;
-    const pvDownsamplerInit = instance.exports.pv_downsampler_init as pv_downsampler_init_type;
-    const pvDownsamplerConvertNumSamplesToInputSampleRate =
-      instance.exports.pv_downsampler_convert_num_samples_to_input_sample_rate as
-        pv_downsampler_convert_num_samples_to_input_sample_rate_type;
-    const pvDownsamplerVersion = instance.exports.pv_downsampler_version as CallableFunction;
+    const cAlignedAlloc = instance.exports.aligned_alloc as aligned_alloc_type;
 
-    const objectAddressAddress = alignedAlloc(
+    const pvResamplerInit = instance.exports.pv_resampler_init as pv_resampler_init_type;
+    const pvResamplerConvertNumSamplesToInputSampleRate =
+      instance.exports.pv_resampler_convert_num_samples_to_input_sample_rate as
+        pv_resampler_convert_num_samples_to_input_sample_rate_type;
+    const pvResamplerConvertNumSamplesToOutputSampleRate =
+      instance.exports.pv_resampler_convert_num_samples_to_output_sample_rate as
+        pv_resampler_convert_num_samples_to_output_sample_rate_type;
+    const pvResamplerVersion = instance.exports.pv_resampler_version as pv_resampler_version_type;
+
+    const objectAddressAddress = cAlignedAlloc(
       Int32Array.BYTES_PER_ELEMENT,
       Int32Array.BYTES_PER_ELEMENT,
     );
     if (objectAddressAddress === 0) {
       throw new Error('malloc failed: Cannot allocate memory');
     }
-    const status = pvDownsamplerInit(
+    const status = pvResamplerInit(
       inputFrequency,
       outputFrequency,
       order,
       objectAddressAddress,
     );
 
-    const versionAddress = await pvDownsamplerVersion();
+    const versionAddress = pvResamplerVersion();
     const version = arrayBufferToStringAtIndex(
       memoryBufferUint8,
       versionAddress,
     );
 
     if (status !== PV_STATUS_SUCCESS) {
-      throw new Error(`pv_downsampler_init failed with status ${status}`);
+      throw new Error(`pv_resampler_init failed with status ${status}`);
     }
     const memoryBufferView = new DataView(memory.buffer);
     const objectAddress = memoryBufferView.getInt32(objectAddressAddress, true);
 
-    const inputFrameLength = pvDownsamplerConvertNumSamplesToInputSampleRate(
-      objectAddress,
-      frameLength,
-    );
-    const inputBufferAddress = alignedAlloc(
+    const inputFrameLength = pvResamplerConvertNumSamplesToInputSampleRate(objectAddress, frameLength) + 1;
+
+    const inputBufferAddress = cAlignedAlloc(
       Int16Array.BYTES_PER_ELEMENT,
-      (inputFrameLength + 1) * Int16Array.BYTES_PER_ELEMENT,
+      inputFrameLength * Int16Array.BYTES_PER_ELEMENT,
     );
     if (inputBufferAddress === 0) {
       throw new Error('malloc failed: Cannot allocate memory');
     }
-    const outputBufferAddress = alignedAlloc(
+    const outputBufferAddress = cAlignedAlloc(
       Int16Array.BYTES_PER_ELEMENT,
       frameLength * Int16Array.BYTES_PER_ELEMENT,
     );
@@ -199,39 +215,38 @@ class Downsampler {
       throw new Error('malloc failed: Cannot allocate memory');
     }
 
-    const pvDownsamplerReset = instance.exports
-      .pv_downsampler_reset as pv_downsampler_reset_type;
-    const pvDownsamplerProcess = instance.exports
-      .pv_downsampler_process as pv_downsampler_process_type;
-    const pvDownsamplerDelete = instance.exports
-      .pv_downsampler_delete as pv_downsampler_delete_type;
+    const pvResamplerReset = instance.exports
+      .pv_resampler_reset as pv_resampler_reset_type;
+    const pvResamplerProcess = instance.exports
+      .pv_resampler_process as pv_resampler_process_type;
+    const pvResamplerDelete = instance.exports
+      .pv_resampler_delete as pv_resampler_delete_type;
 
     return {
+      cAlignedAlloc: cAlignedAlloc,
+      frameLength: frameLength,
       inputBufferAddress: inputBufferAddress,
       inputFrameLength: inputFrameLength,
       memory: memory,
       objectAddress: objectAddress,
       outputBufferAddress: outputBufferAddress,
-      pvDownsamplerConvertNumSamplesToInputSampleRate,
-      pvDownsamplerInit: pvDownsamplerInit,
-      pvDownsamplerProcess: pvDownsamplerProcess,
-      pvDownsamplerReset: pvDownsamplerReset,
-      pvDownsamplerDelete: pvDownsamplerDelete,
-      frameLength: frameLength,
+      pvResamplerConvertNumSamplesToInputSampleRate,
+      pvResamplerConvertNumSamplesToOutputSampleRate,
+      pvResamplerDelete: pvResamplerDelete,
+      pvResamplerInit: pvResamplerInit,
+      pvResamplerProcess: pvResamplerProcess,
+      pvResamplerReset: pvResamplerReset,
       version: version,
     };
   }
 
   public process(
     inputFrame: Int16Array | Float32Array,
-    inputBufferSize: number,
     outputBuffer: Int16Array,
   ): number {
-    if (inputFrame.length > this._frameLength) {
-      throw new Error(`InputFrame length '${inputFrame.length}' must be smaller than ${this._frameLength}.`);
-    }
-    if (inputBufferSize > this._frameLength) {
-      inputBufferSize = this._frameLength;
+
+    if (inputFrame.length > this._inputBufferLength) {
+      throw new Error(`InputFrame length '${inputFrame.length}' must be smaller than ${this._inputBufferLength}.`);
     }
 
     let inputBuffer = new Int16Array(inputFrame.length);
@@ -254,10 +269,10 @@ class Downsampler {
       this._inputBufferAddress / Int16Array.BYTES_PER_ELEMENT,
     );
 
-    const processedSamples = this._pvDownsamplerProcess(
+    const processedSamples = this._pvResamplerProcess(
       this._objectAddress,
       this._inputBufferAddress,
-      inputBufferSize,
+      inputFrame.length,
       this._outputBufferAddress,
     );
     for (let i = 0; i < processedSamples; i++) {
@@ -270,23 +285,39 @@ class Downsampler {
   }
 
   public reset(): void {
-    this._pvDownsamplerReset(this._objectAddress);
+    this._pvResamplerReset(this._objectAddress);
   }
 
   public release(): void {
-    this._pvDownsamplerDelete(this._objectAddress);
+    this._pvResamplerDelete(this._objectAddress);
+  }
+
+
+  get inputBufferLength(): number {
+    return this._inputBufferLength;
+  }
+
+  get frameLength(): number {
+    return this._frameLength;
   }
 
   get version(): string {
-    return Downsampler._version;
+    return Resampler._version;
   }
 
   public getNumRequiredInputSamples(numSample: number): number {
-    return this._pvDownsamplerConvertNumSamplesToInputSampleRate(
+    return this._pvResamplerConvertNumSamplesToInputSampleRate(
+      this._objectAddress,
+      numSample,
+    );
+  }
+
+  public getNumRequiredOutputSamples(numSample: number): number {
+    return this._pvResamplerConvertNumSamplesToOutputSampleRate(
       this._objectAddress,
       numSample,
     );
   }
 }
 
-export default Downsampler;
+export default Resampler;

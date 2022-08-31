@@ -51,7 +51,6 @@ def run_unit_test_selenium(
         filter_order
 ):
 
-    # base_folder = os.path.join(os.path.dirname(__file__), '..', '..')
     pcm_file_absolute_path = os.path.join(root_path, 'audio', pcm_file)
     print(pcm_file_absolute_path)
     ref_file_absolute_path = os.path.join(root_path, 'audio', ref_file)
@@ -68,17 +67,17 @@ def run_unit_test_selenium(
 
     wait = WebDriverWait(driver, 20)
 
-    driver.find_element_by_id("pcmFile").send_keys(pcm_file_absolute_path)
+    driver.find_element(By.ID, 'pcmFile').send_keys(pcm_file_absolute_path)
     wait.until(EC.visibility_of_element_located((By.ID, "pcmFileLoaded")))
 
-    driver.find_element_by_id("refPcmFile").send_keys(ref_file_absolute_path)
+    driver.find_element(By.ID, 'refPcmFile').send_keys(ref_file_absolute_path)
     wait.until(EC.visibility_of_element_located((By.ID, "refPcmFileLoaded")))
 
-    driver.find_element_by_id("filterOrder").send_keys(filter_order)
-    driver.find_element_by_id("inputFrequency").send_keys(input_frequency)
-    driver.find_element_by_id("outputFrequency").send_keys(output_frequency)
+    driver.find_element(By.ID, 'filterOrder').send_keys(filter_order)
+    driver.find_element(By.ID, 'inputFrequency').send_keys(input_frequency)
+    driver.find_element(By.ID, 'outputFrequency').send_keys(output_frequency)
 
-    driver.find_element_by_id("submit").click()
+    driver.find_element(By.ID, 'submit').click()
     wait.until(EC.visibility_of_element_located((By.ID, "testComplete")))
 
     test_result = 1
