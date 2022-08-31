@@ -105,9 +105,7 @@ onmessage = async function (event: MessageEvent<ResamplerWorkerRequest>): Promis
       }
       try {
         const {inputFrame} = event.data;
-        console.log('before process');
         accumulator?.process(inputFrame);
-        console.log('after process');
       } catch (e: any) {
         self.postMessage({
           command: 'error',
