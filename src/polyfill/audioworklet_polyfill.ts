@@ -46,6 +46,11 @@ if (typeof AudioWorkletNode !== 'function' || !('audioWorklet' in AudioContext.p
       }
     };
 
+    // @ts-ignore
+    scriptProcessor.port.close = (): void => {
+      return;
+    };
+
     return scriptProcessor;
   };
 }
