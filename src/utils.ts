@@ -22,7 +22,7 @@ export type BrowserFeatures = {
 /**
  * Check for browser compatibility with Picovoice: WebAssembly, Web Audio API, etc.
  *
- * @return object with compatibilty details, with special key '_picovoice' offering a yes/no answer.
+ * @return object with compatibility details, with special key '_picovoice' offering a yes/no answer.
  */
 export function browserCompatibilityCheck(): BrowserFeatures {
   // Are we in a secure context? Microphone access requires HTTPS (with the exception of localhost, for development)
