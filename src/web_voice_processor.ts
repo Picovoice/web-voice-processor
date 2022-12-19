@@ -271,6 +271,10 @@ export class WebVoiceProcessor {
   private async setupRecorder(
     options: WebVoiceProcessorOptions,
   ) {
+    if (navigator.mediaDevices === undefined) {
+      throw new Error("Audio recording is not allowed or disabled.");
+    }
+
     const {
       outputSampleRate = 16000,
       frameLength = 512,
