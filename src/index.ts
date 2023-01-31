@@ -2,7 +2,7 @@ import './polyfill/audioworklet_polyfill';
 
 import { WvpMessageEvent, WebVoiceProcessorOptions } from './types';
 
-import { WebVoiceProcessor} from './web_voice_processor';
+import { WebVoiceProcessor, WvpError } from './web_voice_processor';
 import { browserCompatibilityCheck } from './utils';
 
 import { VuMeterEngine } from './engines/vu_meter_engine';
@@ -18,6 +18,7 @@ ResamplerWorker.setWasm(resamplerWasm);
 export {
   ResamplerWorker,
   VuMeterEngine,
+  WvpError,
   WebVoiceProcessor,
   WebVoiceProcessorOptions,
   WvpMessageEvent,

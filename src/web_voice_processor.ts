@@ -1,5 +1,5 @@
 /*
-    Copyright 2018-2022 Picovoice Inc.
+    Copyright 2018-2023 Picovoice Inc.
 
     You may not use this file except in compliance with the license. A copy of the license is located in the "LICENSE"
     file accompanying this source.
@@ -19,6 +19,11 @@ import recorderProcessor from './audio_worklet/recorder_processor.js';
 import { PvEngine, WebVoiceProcessorOptions, WvpState } from './types';
 
 import { AudioDumpEngine } from './engines/audio_dump_engine';
+
+/**
+ * WebVoiceProcessor Error Class
+ */
+export class WvpError extends Error {}
 
 /**
  * Obtain microphone permission and audio stream;
@@ -128,26 +133,6 @@ export class WebVoiceProcessor {
   }
 
   /**
-   * Returns detailed error message given an error object.
-   * The error must be an error thrown from microphone access.
-   */
-  static getErrorMessage(error: Error | any): string {
-    if (!(error instanceof Error)) {
-      return JSON.stringify(error);
-    }
-
-    if (error.name === 'SecurityError' || error.name === 'NotAllowedError') {
-      return 'Failed to record audio: microphone permissions denied.';
-    } else if (error.name === 'NotFoundError') {
-      return 'Failed to record audio: audio recording device was not found.';
-    } else if (error.name === 'NotReadableError') {
-      return 'Failed to record audio: audio recording device is not working correctly.';
-    }
-
-    return error.message;
-  }
-
-  /**
    * Set new WebVoiceProcessor options.
    * If forceUpdate is not set to true, all engines must be unsubscribed and subscribed
    * again in order for the recorder to take the new changes.
@@ -187,21 +172,33 @@ export class WebVoiceProcessor {
     return new Promise((resolve, reject) => {
       this._mutex
         .runExclusive(async () => {
-          if (this._audioContext === null || this._state === WvpState.STOPPED || this.isReleased) {
-            const { audioContext, microphoneStream, recorderNode, resamplerWorker } = await this.setupRecorder(this._options);
-            this._audioContext = audioContext;
-            this._microphoneStream = microphoneStream;
-            this._recorderNode = recorderNode;
-            this._resamplerWorker = resamplerWorker;
+          try {
+            if (this._audioContext === null || this._state === WvpState.STOPPED || this.isReleased) {
+              const { audioContext, microphoneStream, recorderNode, resamplerWorker } = await this.setupRecorder(this._options);
+              this._audioContext = audioContext;
+              this._microphoneStream = microphoneStream;
+              this._recorderNode = recorderNode;
+              this._resamplerWorker = resamplerWorker;
 
-            recorderNode.port.onmessage = (event: MessageEvent): void => {
-              resamplerWorker.process(event.data.buffer[0]);
-            };
-            this._state = WvpState.STARTED;
-          }
+              recorderNode.port.onmessage = (event: MessageEvent): void => {
+                resamplerWorker.process(event.data.buffer[0]);
+              };
+              this._state = WvpState.STARTED;
+            }
 
-          if (this._audioContext !== null && this.isSuspended) {
-            await this._audioContext.resume();
+            if (this._audioContext !== null && this.isSuspended) {
+              await this._audioContext.resume();
+            }
+          } catch (error: any) {
+            if (error.name === 'SecurityError' || error.name === 'NotAllowedError') {
+              throw new WvpError('Failed to record audio: microphone permissions denied.');
+            } else if (error.name === 'NotFoundError') {
+              throw new WvpError('Failed to record audio: audio recording device was not found.');
+            } else if (error.name === 'NotReadableError') {
+              throw new WvpError('Failed to record audio: audio recording device is not working correctly.');
+            } else {
+              throw error;
+            }
           }
         })
         .then(() => {
