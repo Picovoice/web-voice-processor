@@ -137,11 +137,11 @@ export class WebVoiceProcessor {
     }
 
     if (error.name === 'SecurityError' || error.name === 'NotAllowedError') {
-      return 'Failed to record audio: permission denied.';
+      return 'Failed to record audio: microphone permissions denied.';
     } else if (error.name === 'NotFoundError') {
-      return 'Failed to record audio: capture device not found.';
+      return 'Failed to record audio: audio recording device was not found.';
     } else if (error.name === 'NotReadableError') {
-      return 'Failed to record audio: device is not working correctly.';
+      return 'Failed to record audio: audio recording device is not working correctly.';
     }
 
     return error.message;
