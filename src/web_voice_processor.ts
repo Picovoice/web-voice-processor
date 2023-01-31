@@ -23,7 +23,12 @@ import { AudioDumpEngine } from './engines/audio_dump_engine';
 /**
  * WebVoiceProcessor Error Class
  */
-export class WvpError extends Error {}
+export class WvpError extends Error {
+  constructor(name: string, message: string) {
+    super(message);
+    this.name = name;
+  }
+}
 
 /**
  * Obtain microphone permission and audio stream;
@@ -191,11 +196,20 @@ export class WebVoiceProcessor {
             }
           } catch (error: any) {
             if (error.name === 'SecurityError' || error.name === 'NotAllowedError') {
-              throw new WvpError('Failed to record audio: microphone permissions denied.');
+              throw new WvpError(
+                'PermissionError',
+                'Failed to record audio: microphone permissions denied.'
+              );
             } else if (error.name === 'NotFoundError') {
-              throw new WvpError('Failed to record audio: audio recording device was not found.');
+              throw new WvpError(
+                'DeviceMissingError',
+                'Failed to record audio: audio recording device was not found.'
+              );
             } else if (error.name === 'NotReadableError') {
-              throw new WvpError('Failed to record audio: audio recording device is not working correctly.');
+              throw new WvpError(
+                'DeviceReadError',
+                'Failed to record audio: audio recording device is not working correctly.'
+              );
             } else {
               throw error;
             }
