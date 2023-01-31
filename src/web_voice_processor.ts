@@ -128,6 +128,26 @@ export class WebVoiceProcessor {
   }
 
   /**
+   * Returns detailed error message given an error object.
+   * The error must be an error thrown from microphone access.
+   */
+  static getErrorMessage(error: Error | any): string {
+    if (!(error instanceof Error)) {
+      return JSON.stringify(error);
+    }
+
+    if (error.name === 'SecurityError' || error.name === 'NotAllowedError') {
+      return 'Failed to record audio: permission denied.';
+    } else if (error.name === 'NotFoundError') {
+      return 'Failed to record audio: capture device not found.';
+    } else if (error.name === 'NotReadableError') {
+      return 'Failed to record audio: device is not working correctly.';
+    }
+
+    return error.message;
+  }
+
+  /**
    * Set new WebVoiceProcessor options.
    * If forceUpdate is not set to true, all engines must be unsubscribed and subscribed
    * again in order for the recorder to take the new changes.
@@ -284,24 +304,13 @@ export class WebVoiceProcessor {
     const numberOfChannels = 1;
 
     const audioContext = await this.getAudioContext();
-    let microphoneStream;
 
-    try {
-      // Get microphone access and ask user permission
-      microphoneStream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          deviceId: deviceId ? {exact: deviceId} : undefined,
-        },
-      });
-    } catch (e: any) {
-      if (e.name === 'SecurityError' || e.name === 'NotAllowedError') {
-        throw new Error('Failed to start recording: permission denied.');
-      } else if (e.name === 'NotFoundError') {
-        throw new Error('Failed to start recording: capture device not found.');
-      } else {
-        throw e;
-      }
-    }
+    // Get microphone access and ask user permission
+    const microphoneStream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        deviceId: deviceId ? { exact: deviceId } : undefined,
+      },
+    });
 
     const audioSource = audioContext.createMediaStreamSource(microphoneStream);
 
