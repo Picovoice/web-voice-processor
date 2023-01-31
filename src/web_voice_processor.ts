@@ -284,13 +284,24 @@ export class WebVoiceProcessor {
     const numberOfChannels = 1;
 
     const audioContext = await this.getAudioContext();
+    let microphoneStream;
 
-    // Get microphone access and ask user permission
-    const microphoneStream = await navigator.mediaDevices.getUserMedia({
-      audio: {
-        deviceId: deviceId ? { exact: deviceId } : undefined,
-      },
-    });
+    try {
+      // Get microphone access and ask user permission
+      microphoneStream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          deviceId: deviceId ? {exact: deviceId} : undefined,
+        },
+      });
+    } catch (e: any) {
+      if (e.name === 'SecurityError' || e.name === 'NotAllowedError') {
+        throw new Error('Failed to start recording: permission denied.');
+      } else if (e.name === 'NotFoundError') {
+        throw new Error('Failed to start recording: capture device not found.');
+      } else {
+        throw e;
+      }
+    }
 
     const audioSource = audioContext.createMediaStreamSource(microphoneStream);
 
