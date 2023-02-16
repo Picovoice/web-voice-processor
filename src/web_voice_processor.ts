@@ -200,7 +200,7 @@ export class WebVoiceProcessor {
                 'PermissionError',
                 'Failed to record audio: microphone permissions denied.'
               );
-            } else if (error.name === 'NotFoundError') {
+            } else if (error.name === 'NotFoundError' || error.name === 'OverconstrainedError') {
               throw new WvpError(
                 'DeviceMissingError',
                 'Failed to record audio: audio recording device was not found.'
