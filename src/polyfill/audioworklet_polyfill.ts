@@ -19,38 +19,40 @@ type ProcessorPolyfill = {
 window.AudioContext = window.AudioContext || window.webkitAudioContext;
 
 if (typeof AudioWorkletNode !== 'function' || !('audioWorklet' in AudioContext.prototype)) {
-  // @ts-ignore
-  AudioContext.prototype.audioWorklet = {
-    addModule: async function(moduleURL: string | URL, options?: WorkletOptions): Promise<void> {
-      return;
-    },
-  };
-
-  // @ts-ignore
-  // eslint-disable-next-line no-native-reassign
-  window.AudioWorkletNode = function(context: AudioContext, processorName: string, options: any): ScriptProcessorNode {
-    const { numberOfChannels = 1, frameLength = 512 } = options && options.processorOptions;
-    const scriptProcessor: ScriptProcessorNode & ProcessorPolyfill = context.createScriptProcessor(frameLength, numberOfChannels, numberOfChannels);
-
-    if (!scriptProcessor.port) {
-      scriptProcessor.port = {};
-    }
-
-    scriptProcessor.onaudioprocess = (event: AudioProcessingEvent): void => {
-      if (scriptProcessor.port && scriptProcessor.port.onmessage) {
-        const buffer = [];
-        for (let i = 0; i < event.inputBuffer.numberOfChannels; i++) {
-          buffer.push(event.inputBuffer.getChannelData(i));
-        }
-        scriptProcessor.port.onmessage({ data: { buffer } } as MessageEvent);
-      }
+  if (AudioContext) {
+    // @ts-ignore
+    AudioContext.prototype.audioWorklet = {
+      addModule: async function(moduleURL: string | URL, options?: WorkletOptions): Promise<void> {
+        return;
+      },
     };
 
     // @ts-ignore
-    scriptProcessor.port.close = (): void => {
-      return;
-    };
+    // eslint-disable-next-line no-native-reassign
+    window.AudioWorkletNode = function(context: AudioContext, processorName: string, options: any): ScriptProcessorNode {
+      const { numberOfChannels = 1, frameLength = 512 } = options && options.processorOptions;
+      const scriptProcessor: ScriptProcessorNode & ProcessorPolyfill = context.createScriptProcessor(frameLength, numberOfChannels, numberOfChannels);
 
-    return scriptProcessor;
-  };
+      if (!scriptProcessor.port) {
+        scriptProcessor.port = {};
+      }
+
+      scriptProcessor.onaudioprocess = (event: AudioProcessingEvent): void => {
+        if (scriptProcessor.port && scriptProcessor.port.onmessage) {
+          const buffer = [];
+          for (let i = 0; i < event.inputBuffer.numberOfChannels; i++) {
+            buffer.push(event.inputBuffer.getChannelData(i));
+          }
+          scriptProcessor.port.onmessage({ data: { buffer } } as MessageEvent);
+        }
+      };
+
+      // @ts-ignore
+      scriptProcessor.port.close = (): void => {
+        return;
+      };
+
+      return scriptProcessor;
+    };
+  }
 }

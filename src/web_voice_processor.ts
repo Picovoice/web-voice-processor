@@ -97,7 +97,7 @@ export class WebVoiceProcessor {
         if (engine.worker.postMessage && typeof engine.worker.postMessage === 'function') {
           this.instance()._engines.add(engine);
         } else {
-          throw new Error("Engine must have a 'onmessage' handler.");
+          throw new WvpError("InvalidEngine", "Engine must have a 'onmessage' handler.");
         }
       } else {
         if (engine.postMessage && typeof engine.postMessage === 'function') {
@@ -105,7 +105,7 @@ export class WebVoiceProcessor {
         } else if (engine.onmessage && typeof engine.onmessage === 'function') {
           this.instance()._engines.add(engine);
         } else {
-          throw new Error("Engine must have a 'onmessage' handler.");
+          throw new WvpError("InvalidEngine", "Engine must have a 'onmessage' handler.");
         }
       }
     }
@@ -200,7 +200,7 @@ export class WebVoiceProcessor {
                 'PermissionError',
                 'Failed to record audio: microphone permissions denied.'
               );
-            } else if (error.name === 'NotFoundError') {
+            } else if (error.name === 'NotFoundError' || error.name === 'OverconstrainedError') {
               throw new WvpError(
                 'DeviceMissingError',
                 'Failed to record audio: audio recording device was not found.'
@@ -303,7 +303,7 @@ export class WebVoiceProcessor {
     options: WebVoiceProcessorOptions,
   ) {
     if (navigator.mediaDevices === undefined) {
-      throw new Error("Audio recording is not allowed or disabled.");
+      throw new WvpError("DeviceDisabledError", "Audio recording is not allowed or disabled.");
     }
 
     const {
