@@ -303,7 +303,7 @@ export class WebVoiceProcessor {
     options: WebVoiceProcessorOptions,
   ) {
     if (navigator.mediaDevices === undefined) {
-      throw new WvpError("NotAvailableError", "Audio recording is not allowed or disabled.");
+      throw new WvpError("DeviceDisabledError", "Audio recording is not allowed or disabled.");
     }
 
     const {
