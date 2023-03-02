@@ -93,6 +93,10 @@ export class WebVoiceProcessor {
    */
   public static async subscribe(engines: PvEngine | PvEngine[]): Promise<void> {
     for (const engine of (Array.isArray(engines) ? engines : [engines])) {
+      if (!engine) {
+        throw new WvpError("InvalidEngine", "Null or undefined engine.");
+      }
+
       if (engine.worker) {
         if (engine.worker.postMessage && typeof engine.worker.postMessage === 'function') {
           this.instance()._engines.add(engine);
@@ -195,21 +199,23 @@ export class WebVoiceProcessor {
               await this._audioContext.resume();
             }
           } catch (error: any) {
-            if (error.name === 'SecurityError' || error.name === 'NotAllowedError') {
-              throw new WvpError(
-                'PermissionError',
-                'Failed to record audio: microphone permissions denied.'
-              );
-            } else if (error.name === 'NotFoundError' || error.name === 'OverconstrainedError') {
-              throw new WvpError(
-                'DeviceMissingError',
-                'Failed to record audio: audio recording device was not found.'
-              );
-            } else if (error.name === 'NotReadableError') {
-              throw new WvpError(
-                'DeviceReadError',
-                'Failed to record audio: audio recording device is not working correctly.'
-              );
+            if (error && error.name) {
+              if (error.name === 'SecurityError' || error.name === 'NotAllowedError') {
+                throw new WvpError(
+                  'PermissionError',
+                  'Failed to record audio: microphone permissions denied.'
+                );
+              } else if (error.name === 'NotFoundError' || error.name === 'OverconstrainedError') {
+                throw new WvpError(
+                  'DeviceMissingError',
+                  'Failed to record audio: audio recording device was not found.'
+                );
+              } else if (error.name === 'NotReadableError') {
+                throw new WvpError(
+                  'DeviceReadError',
+                  'Failed to record audio: audio recording device is not working correctly.'
+                );
+              }
             } else {
               throw error;
             }
