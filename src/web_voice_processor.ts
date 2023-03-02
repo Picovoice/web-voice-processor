@@ -199,7 +199,7 @@ export class WebVoiceProcessor {
               await this._audioContext.resume();
             }
           } catch (error: any) {
-            if (error ) {
+            if (error && error.name) {
               if (error.name === 'SecurityError' || error.name === 'NotAllowedError') {
                 throw new WvpError(
                   'PermissionError',
