@@ -16,10 +16,9 @@ A library for real-time voice processing in web browsers.
 - [Web Voice Processor](#web-voice-processor)
   - [Browser compatibility](#browser-compatibility)
     - [Browser features](#browser-features)
-    - [AudioWorklet & Safari](#audioworklet---safari)
   - [Installation](#installation)
   - [How to use](#how-to-use)
-    - [Via ES Modules (Create React App, Angular, Webpack, etc.)](#via-es-modules--create-react-app--angular--webpack--etc-)
+    - [Via ES Modules (Create React App, Angular, Webpack, etc.)](#via-es-modules-create-react-app-angular-webpack-etc)
     - [Via HTML script tag](#via-html-script-tag)
     - [Start listening](#start-listening)
     - [Stop listening](#stop-listening)
@@ -106,7 +105,7 @@ await WebVoiceProcessor.subscribe(worker);
 await WebVoiceProcessor.subscribe([engine, worker]);
 ```
 
-An `engine` is either a [Web Workers](<(https://developer.mozilla.org/en-US/docs/Web/API/Worker)>) or an object
+An `engine` is either a [Web Workers](https://developer.mozilla.org/en-US/docs/Web/API/Worker) or an object
 implementing the following interface within their `onmessage` method:
 
 ```javascript
@@ -121,7 +120,7 @@ onmessage = function (e) {
 
 where `e.data.inputFrame` is an `Int16Array` of `frameLength` audio samples.
 
-For examples of using engines, look at [src/engines](/package/src/engines).
+For examples of using engines, look at [src/engines](src/engines).
 
 This is async due to its [Web Audio API microphone request](https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia). The promise will be rejected if the user refuses permission, no suitable devices are found, etc. Your calling code should anticipate the possibility of rejection. When the promise resolves, the WebVoiceProcessor is running.
 

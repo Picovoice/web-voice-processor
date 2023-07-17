@@ -8,12 +8,14 @@ on:
       - "audio/**"
       - "src/**"
       - "lib/**"
+      - '.github/workflows/package.yml'
   pull_request:
     branches: [ master, 'v[0-9]+.[0-9]+' ]
     paths:
       - "audio/**"
       - "src/**"
       - "lib/**"
+      - '.github/workflows/package.yml'
 
 jobs:
   build:

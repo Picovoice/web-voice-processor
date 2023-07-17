@@ -6,10 +6,12 @@ on:
     branches: [ master ]
     paths:
       - "demo/**"
+      - '.github/workflows/demo.yml'
   pull_request:
     branches: [ master, 'v[0-9]+.[0-9]+' ]
     paths:
       - "demo/**"
+      - '.github/workflows/demo.yml'
 
 jobs:
   build:
