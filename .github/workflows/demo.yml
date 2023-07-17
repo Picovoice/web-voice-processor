@@ -5,15 +5,11 @@ on:
   push:
     branches: [ master ]
     paths:
-      - "audio/**"
-      - "src/**"
-      - "lib/**"
+      - "demo/**"
   pull_request:
     branches: [ master, 'v[0-9]+.[0-9]+' ]
     paths:
-      - "audio/**"
-      - "src/**"
-      - "lib/**"
+      - "demo/**"
 
 jobs:
   build:
@@ -34,12 +30,3 @@ jobs:
 
       - name: Install dependencies
         run: yarn install
-
-      - name: Generate the package
-        run: yarn build
-
-      - name: Build
-        run: yarn && yarn build
-
-      - name: Test
-        run: yarn test

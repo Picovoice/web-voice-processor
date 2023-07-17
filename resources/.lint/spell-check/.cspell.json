@@ -1,0 +1,23 @@
+{
+  "language": "en",
+  "dictionaries": [
+    "dict"
+  ],
+  "dictionaryDefinitions": [
+    {
+      "name": "dict",
+      "path": "./dict.txt",
+      "addWords": true
+    }
+  ],
+  "ignorePaths": [
+    "**/package.json",
+    "**/packages-lock.json",
+    "**/tsconfig.json",
+    "**/tslint.json",
+    "**/node_modules/*",
+    "**/dist/*",
+    "**/lib/*",
+    "**/resources/audio/*"
+  ]
+}

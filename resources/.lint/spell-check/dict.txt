@@ -1,0 +1,14 @@
+camelcase
+downsampled
+fdstat
+filestat
+iife
+oneoff
+picovoice
+pread
+prestat
+pwrite
+resampler
+sched
+wavefile
+worklet

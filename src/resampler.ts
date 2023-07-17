@@ -244,7 +244,6 @@ class Resampler {
     inputFrame: Int16Array | Float32Array,
     outputBuffer: Int16Array,
   ): number {
-
     if (inputFrame.length > this._inputBufferLength) {
       throw new Error(`InputFrame length '${inputFrame.length}' must be smaller than ${this._inputBufferLength}.`);
     }

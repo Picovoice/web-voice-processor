@@ -273,7 +273,6 @@ export class WebVoiceProcessor {
   }
 
   private recorderCallback(inputFrame: Int16Array): void {
-
     for (const engine of this._engines) {
       if (engine.worker && engine.worker.postMessage) {
         engine.worker.postMessage({
