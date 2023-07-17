@@ -23,7 +23,7 @@ export class VuMeterEngine {
     };
   }
 
-  get worker() {
+  get worker(): Worker {
     return this._worker;
   }
 }

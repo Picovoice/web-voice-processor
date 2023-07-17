@@ -16,6 +16,7 @@ Resampler.setWasm(resamplerWasm);
 ResamplerWorker.setWasm(resamplerWasm);
 
 export {
+  Resampler,
   ResamplerWorker,
   VuMeterEngine,
   WvpError,

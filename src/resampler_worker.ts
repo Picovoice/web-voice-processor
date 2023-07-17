@@ -62,6 +62,7 @@ export default class ResamplerWorker {
                   break;
                 default:
                   // @ts-ignore
+                  // eslint-disable-next-line no-console
                   console.error(`Unrecognized command: ${event.data.command}`);
               }
             };

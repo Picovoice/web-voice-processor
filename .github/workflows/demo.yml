@@ -5,17 +5,13 @@ on:
   push:
     branches: [ master ]
     paths:
-      - "audio/**"
-      - "src/**"
-      - "lib/**"
-      - '.github/workflows/package.yml'
+      - "demo/**"
+      - '.github/workflows/demo.yml'
   pull_request:
     branches: [ master, 'v[0-9]+.[0-9]+' ]
     paths:
-      - "audio/**"
-      - "src/**"
-      - "lib/**"
-      - '.github/workflows/package.yml'
+      - "demo/**"
+      - '.github/workflows/demo.yml'
 
 jobs:
   build:
@@ -36,12 +32,3 @@ jobs:
 
       - name: Install dependencies
         run: yarn install
-
-      - name: Generate the package
-        run: yarn build
-
-      - name: Build
-        run: yarn && yarn build
-
-      - name: Test
-        run: yarn test
