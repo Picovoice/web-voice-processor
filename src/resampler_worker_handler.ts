@@ -17,7 +17,7 @@ import Resampler from './resampler';
 
 let accumulator: BufferAccumulator | null = null;
 let resampler: Resampler | null = null;
-let isDetached = false;
+let isResamplerDetached = false;
 let initParams: any = {};
 
 class BufferAccumulator {
@@ -105,8 +105,8 @@ onmessage = async function (event: MessageEvent<ResamplerWorkerRequest>): Promis
       }
       break;
     case 'process':
-      if (isDetached) {
-        isDetached = false;
+      if (isResamplerDetached) {
+        isResamplerDetached = false;
         resampler = await Resampler.create(
           initParams.inputSampleRate,
           initParams.outputSampleRate,
@@ -128,7 +128,7 @@ onmessage = async function (event: MessageEvent<ResamplerWorkerRequest>): Promis
         if (e.message.includes('Invalid memory state')) {
           resampler.release();
           resampler = null;
-          isDetached = true;
+          isResamplerDetached = true;
         }
         self.postMessage({
           command: 'error',
