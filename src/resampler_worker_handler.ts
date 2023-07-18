@@ -106,13 +106,13 @@ onmessage = async function (event: MessageEvent<ResamplerWorkerRequest>): Promis
       break;
     case 'process':
       if (isDetached) {
+        isDetached = false;
         resampler = await Resampler.create(
           initParams.inputSampleRate,
           initParams.outputSampleRate,
           initParams.filterOrder,
           initParams.frameLength,
         );
-        isDetached = false;
       }
       if (resampler === null) {
         self.postMessage({
@@ -126,6 +126,8 @@ onmessage = async function (event: MessageEvent<ResamplerWorkerRequest>): Promis
         accumulator?.process(inputFrame);
       } catch (e: any) {
         if (e.message.includes('Invalid memory state')) {
+          resampler.release();
+          resampler = null;
           isDetached = true;
         }
         self.postMessage({
