@@ -17,6 +17,8 @@ import Resampler from './resampler';
 
 let accumulator: BufferAccumulator | null = null;
 let resampler: Resampler | null = null;
+let isResamplerDetached = false;
+let initParams: any = {};
 
 class BufferAccumulator {
   private readonly _frameLength: number;
@@ -80,6 +82,13 @@ onmessage = async function (event: MessageEvent<ResamplerWorkerRequest>): Promis
           event.data.frameLength,
         );
 
+        initParams = {
+          inputSampleRate: event.data.inputSampleRate,
+          outputSampleRate: event.data.outputSampleRate,
+          filterOrder: event.data.filterOrder,
+          frameLength: event.data.frameLength,
+        };
+
         accumulator = new BufferAccumulator(
           resampler.frameLength,
           resampler.inputBufferLength);
@@ -96,6 +105,15 @@ onmessage = async function (event: MessageEvent<ResamplerWorkerRequest>): Promis
       }
       break;
     case 'process':
+      if (isResamplerDetached) {
+        isResamplerDetached = false;
+        resampler = await Resampler.create(
+          initParams.inputSampleRate,
+          initParams.outputSampleRate,
+          initParams.filterOrder,
+          initParams.frameLength,
+        );
+      }
       if (resampler === null) {
         self.postMessage({
           command: 'error',
@@ -107,6 +125,11 @@ onmessage = async function (event: MessageEvent<ResamplerWorkerRequest>): Promis
         const {inputFrame} = event.data;
         accumulator?.process(inputFrame);
       } catch (e: any) {
+        if (e.message.includes('Invalid memory state')) {
+          resampler.release();
+          resampler = null;
+          isResamplerDetached = true;
+        }
         self.postMessage({
           command: 'error',
           message: e.message,

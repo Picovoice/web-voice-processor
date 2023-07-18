@@ -65,6 +65,8 @@ class Resampler {
   private static _wasm: string;
   public static _version: string;
 
+  private _isWasmMemoryDetached: boolean = false;
+
   private constructor(handleWasm: ResamplerWasmOutput) {
     Resampler._version = handleWasm.version;
 
@@ -244,6 +246,10 @@ class Resampler {
     inputFrame: Int16Array | Float32Array,
     outputBuffer: Int16Array,
   ): number {
+    if (this._isWasmMemoryDetached) {
+      return 0;
+    }
+
     if (inputFrame.length > this._inputBufferLength) {
       throw new Error(`InputFrame length '${inputFrame.length}' must be smaller than ${this._inputBufferLength}.`);
     }
@@ -263,24 +269,29 @@ class Resampler {
       throw new Error(`Invalid inputFrame type: ${typeof inputFrame}. Expected Float32Array or Int16Array.`);
     }
 
-    this._memoryBuffer.set(
-      inputBuffer,
-      this._inputBufferAddress / Int16Array.BYTES_PER_ELEMENT,
-    );
-
-    const processedSamples = this._pvResamplerProcess(
-      this._objectAddress,
-      this._inputBufferAddress,
-      inputFrame.length,
-      this._outputBufferAddress,
-    );
-    for (let i = 0; i < processedSamples; i++) {
-      outputBuffer[i] = this._memoryBufferView.getInt16(
-        this._outputBufferAddress + i * Int16Array.BYTES_PER_ELEMENT,
-        true,
+    try {
+      this._memoryBuffer.set(
+        inputBuffer,
+        this._inputBufferAddress / Int16Array.BYTES_PER_ELEMENT,
       );
+
+      const processedSamples = this._pvResamplerProcess(
+        this._objectAddress,
+        this._inputBufferAddress,
+        inputFrame.length,
+        this._outputBufferAddress,
+      );
+      for (let i = 0; i < processedSamples; i++) {
+        outputBuffer[i] = this._memoryBufferView.getInt16(
+          this._outputBufferAddress + i * Int16Array.BYTES_PER_ELEMENT,
+          true,
+        );
+      }
+      return processedSamples;
+    } catch (error: any) {
+      this._errorHandler();
+      throw error;
     }
-    return processedSamples;
   }
 
   public reset(): void {
@@ -305,17 +316,35 @@ class Resampler {
   }
 
   public getNumRequiredInputSamples(numSample: number): number {
-    return this._pvResamplerConvertNumSamplesToInputSampleRate(
-      this._objectAddress,
-      numSample,
-    );
+    try {
+      return this._pvResamplerConvertNumSamplesToInputSampleRate(
+        this._objectAddress,
+        numSample,
+      );
+    } catch (error: any) {
+      this._errorHandler();
+      throw error;
+    }
   }
 
   public getNumRequiredOutputSamples(numSample: number): number {
-    return this._pvResamplerConvertNumSamplesToOutputSampleRate(
-      this._objectAddress,
-      numSample,
-    );
+    try {
+      return this._pvResamplerConvertNumSamplesToOutputSampleRate(
+        this._objectAddress,
+        numSample,
+      );
+    } catch (error: any) {
+      this._errorHandler();
+      throw error;
+    }
+  }
+
+  private _errorHandler(): void {
+    if (this._memoryBuffer.length === 0) {
+      this._isWasmMemoryDetached = true;
+      this.release();
+      throw new Error("Invalid memory state: browser might have cleaned resources automatically. Re-initialize Resampler.");
+    }
   }
 }
 
