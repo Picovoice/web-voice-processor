@@ -259,7 +259,6 @@ class Resampler {
     }
 
     const memoryBuffer = new Int16Array(this._wasmMemory.buffer);
-    const memoryBufferView = new DataView(this._wasmMemory.buffer);
 
     memoryBuffer.set(
       inputBuffer,
@@ -272,6 +271,9 @@ class Resampler {
       inputFrame.length,
       this._outputBufferAddress,
     );
+
+    const memoryBufferView = new DataView(this._wasmMemory.buffer);
+
     for (let i = 0; i < processedSamples; i++) {
       outputBuffer[i] = memoryBufferView.getInt16(
         this._outputBufferAddress + i * Int16Array.BYTES_PER_ELEMENT,
