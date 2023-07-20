@@ -9,10 +9,10 @@
   dependencies:
     commander "^9.2.0"
 
-"@picovoice/web-voice-processor@^4.0.7":
-  version "4.0.7"
-  resolved "https://registry.yarnpkg.com/@picovoice/web-voice-processor/-/web-voice-processor-4.0.7.tgz#5df76c3b283a4c90ee53865cdd5dab0099acb823"
-  integrity sha512-LtZDNrtezi7B/1CWeda4YE7M+SAKN7ALvGf+j357TmmJRqnMnt21urAiZ90zSMUbFCoYqKIeq8rMGU7RkKaeEw==
+"@picovoice/web-voice-processor@^4.0.8":
+  version "4.0.8"
+  resolved "https://registry.yarnpkg.com/@picovoice/web-voice-processor/-/web-voice-processor-4.0.8.tgz#95247a5393cac4d16490a53feb0f413c902ee5fa"
+  integrity sha512-/OSHn8YKniMo0jP5EwGimLOxvLQl/Yx4Hs+LydNmoSu4hfBrDdzhhfhB79118uDiK4aUUKx2A/RAD9TG0mQ/ng==
   dependencies:
     "@picovoice/web-utils" "=1.3.1"
 

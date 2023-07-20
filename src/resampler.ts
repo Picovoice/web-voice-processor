@@ -56,16 +56,12 @@ class Resampler {
   private readonly _outputBufferAddress: number;
 
   private _wasmMemory: WebAssembly.Memory;
-  private _memoryBuffer: Int16Array;
-  private _memoryBufferView: DataView;
 
   private readonly _frameLength: number;
   private readonly _inputBufferLength: number;
 
   private static _wasm: string;
   public static _version: string;
-
-  private _isWasmMemoryDetached: boolean = false;
 
   private constructor(handleWasm: ResamplerWasmOutput) {
     Resampler._version = handleWasm.version;
@@ -84,9 +80,6 @@ class Resampler {
     this._inputBufferAddress = handleWasm.inputBufferAddress;
     this._objectAddress = handleWasm.objectAddress;
     this._outputBufferAddress = handleWasm.outputBufferAddress;
-
-    this._memoryBuffer = new Int16Array(handleWasm.memory.buffer);
-    this._memoryBufferView = new DataView(handleWasm.memory.buffer);
 
     this._frameLength = handleWasm.frameLength;
     this._inputBufferLength = handleWasm.inputFrameLength;
@@ -246,10 +239,6 @@ class Resampler {
     inputFrame: Int16Array | Float32Array,
     outputBuffer: Int16Array,
   ): number {
-    if (this._isWasmMemoryDetached) {
-      return 0;
-    }
-
     if (inputFrame.length > this._inputBufferLength) {
       throw new Error(`InputFrame length '${inputFrame.length}' must be smaller than ${this._inputBufferLength}.`);
     }
@@ -269,29 +258,29 @@ class Resampler {
       throw new Error(`Invalid inputFrame type: ${typeof inputFrame}. Expected Float32Array or Int16Array.`);
     }
 
-    try {
-      this._memoryBuffer.set(
-        inputBuffer,
-        this._inputBufferAddress / Int16Array.BYTES_PER_ELEMENT,
-      );
+    const memoryBuffer = new Int16Array(this._wasmMemory.buffer);
 
-      const processedSamples = this._pvResamplerProcess(
-        this._objectAddress,
-        this._inputBufferAddress,
-        inputFrame.length,
-        this._outputBufferAddress,
+    memoryBuffer.set(
+      inputBuffer,
+      this._inputBufferAddress / Int16Array.BYTES_PER_ELEMENT,
+    );
+
+    const processedSamples = this._pvResamplerProcess(
+      this._objectAddress,
+      this._inputBufferAddress,
+      inputFrame.length,
+      this._outputBufferAddress,
+    );
+
+    const memoryBufferView = new DataView(this._wasmMemory.buffer);
+
+    for (let i = 0; i < processedSamples; i++) {
+      outputBuffer[i] = memoryBufferView.getInt16(
+        this._outputBufferAddress + i * Int16Array.BYTES_PER_ELEMENT,
+        true,
       );
-      for (let i = 0; i < processedSamples; i++) {
-        outputBuffer[i] = this._memoryBufferView.getInt16(
-          this._outputBufferAddress + i * Int16Array.BYTES_PER_ELEMENT,
-          true,
-        );
-      }
-      return processedSamples;
-    } catch (error: any) {
-      this._errorHandler();
-      throw error;
     }
+    return processedSamples;
   }
 
   public reset(): void {
@@ -316,35 +305,17 @@ class Resampler {
   }
 
   public getNumRequiredInputSamples(numSample: number): number {
-    try {
-      return this._pvResamplerConvertNumSamplesToInputSampleRate(
-        this._objectAddress,
-        numSample,
-      );
-    } catch (error: any) {
-      this._errorHandler();
-      throw error;
-    }
+    return this._pvResamplerConvertNumSamplesToInputSampleRate(
+      this._objectAddress,
+      numSample,
+    );
   }
 
   public getNumRequiredOutputSamples(numSample: number): number {
-    try {
-      return this._pvResamplerConvertNumSamplesToOutputSampleRate(
-        this._objectAddress,
-        numSample,
-      );
-    } catch (error: any) {
-      this._errorHandler();
-      throw error;
-    }
-  }
-
-  private _errorHandler(): void {
-    if (this._memoryBuffer.length === 0) {
-      this._isWasmMemoryDetached = true;
-      this.release();
-      throw new Error("Invalid memory state: browser might have cleaned resources automatically. Re-initialize Resampler.");
-    }
+    return this._pvResamplerConvertNumSamplesToOutputSampleRate(
+      this._objectAddress,
+      numSample,
+    );
   }
 }
 
