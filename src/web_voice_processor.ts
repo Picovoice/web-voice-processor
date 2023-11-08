@@ -320,15 +320,16 @@ export class WebVoiceProcessor {
       frameLength = 512,
       deviceId = null,
       filterOrder = 50,
+      audioConstraints = {}
     } = options;
     const numberOfChannels = 1;
 
     const audioContext = await this.getAudioContext();
 
-    // Get microphone access and ask user permission
     const microphoneStream = await navigator.mediaDevices.getUserMedia({
       audio: {
         deviceId: deviceId ? { exact: deviceId } : undefined,
+        ...audioConstraints,
       },
     });
 

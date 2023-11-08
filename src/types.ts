@@ -39,6 +39,8 @@ export type WebVoiceProcessorOptions = {
   filterOrder?: number;
   /** Custom made recorder processor */
   customRecorderProcessorURL?: string;
+  /** audio constraints for mediaDevices.getUserMedia */
+  audioConstraints?: MediaTrackConstraints;
 };
 
 export type ResamplerWorkerInitRequest = {
