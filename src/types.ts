@@ -1,5 +1,5 @@
 /*
-    Copyright 2018-2022 Picovoice Inc.
+    Copyright 2018-2024 Picovoice Inc.
 
     You may not use this file except in compliance with the license. A copy of the license is located in the "LICENSE"
     file accompanying this source.
@@ -36,7 +36,9 @@ export type WebVoiceProcessorOptions = {
   /** Microphone id to use (can be fetched with mediaDevices.enumerateDevices) */
   deviceId?: string | null;
   /** Filter order (default: 50) */
-  filterOrder?: number
+  filterOrder?: number;
+  /** Custom made recorder processor */
+  customRecorderProcessorURL?: string;
 };
 
 export type ResamplerWorkerInitRequest = {

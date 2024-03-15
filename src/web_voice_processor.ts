@@ -298,8 +298,12 @@ export class WebVoiceProcessor {
   private async getAudioContext(): Promise<AudioContext> {
     if (this._audioContext === null || this.isReleased) {
       this._audioContext = new AudioContext();
-      const objectURL = URL.createObjectURL(new Blob([base64ToUint8Array(recorderProcessor).buffer], {type: 'application/javascript'}));
-      await this._audioContext.audioWorklet.addModule(objectURL);
+      if (this._options.customRecorderProcessorURL) {
+        await this._audioContext.audioWorklet.addModule(this._options.customRecorderProcessorURL);
+      } else {
+        const objectURL = URL.createObjectURL(new Blob([base64ToUint8Array(recorderProcessor).buffer], {type: 'application/javascript'}));
+        await this._audioContext.audioWorklet.addModule(objectURL);
+      }
     }
     return this._audioContext;
   }
