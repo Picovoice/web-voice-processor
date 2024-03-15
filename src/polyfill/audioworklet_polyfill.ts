@@ -21,17 +21,19 @@ if (typeof window !== "undefined") {
 
   if (typeof AudioWorkletNode !== 'function' || !('audioWorklet' in AudioContext.prototype)) {
     if (AudioContext) {
-      // @ts-ignore
-      AudioContext.prototype.audioWorklet = {
-        // eslint-disable-next-line
-        addModule: async function (moduleURL: string | URL, options?: WorkletOptions): Promise<void> {
-          return;
-        },
-      };
+      if (!('audioWorklet' in AudioContext.prototype)) {
+        // @ts-ignore
+        AudioContext.prototype.audioWorklet = {
+          // eslint-disable-next-line
+          addModule: async function (moduleURL: string | URL, options?: WorkletOptions): Promise<void> {
+            return;
+          },
+        };
+      }
 
       // @ts-ignore
       // eslint-disable-next-line no-native-reassign
-      window.AudioWorkletNode = function (context: AudioContext, processorName: string, options: any): ScriptProcessorNode {
+      window.AudioWorkletNode = window.AudioWorkletNode || function (context: AudioContext, processorName: string, options: any): ScriptProcessorNode {
         const {numberOfChannels = 1, frameLength = 512} = options && options.processorOptions;
         const scriptProcessor: ScriptProcessorNode & ProcessorPolyfill = context.createScriptProcessor(frameLength, numberOfChannels, numberOfChannels);
 
