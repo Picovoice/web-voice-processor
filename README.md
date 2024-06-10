@@ -161,10 +161,11 @@ WebVoiceProcessor.setOptions(options);
 
 ### Custom Recorder Processor
 
-**NOTE**: We won't be responsible for any bugs related to using custom-made recorder processor.
+**NOTE**: Issues related to custom recorder processor implementations are out of the scope of this repo.
 
 Take a look at [recorder_processor.js](src/audio_worklet/recorder_processor.js) in this repo as a reference
-on how to create a simple recorder processor. 
+on how to create a simple recorder processor. To learn more about creating a recorder processor,
+take a look at [AudioWorkletProcessor](https://developer.mozilla.org/en-US/docs/Web/API/AudioWorkletProcessor).
 
 Add the option `customRecorderProcessorURL` to options object to use your own recorder processor.
 Enter the string to the custom recorder processor URL or leave it blank to use the default recorder processor.
