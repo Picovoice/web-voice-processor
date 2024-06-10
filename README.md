@@ -153,7 +153,31 @@ let options = {
   frameLength: 512,
   outputSampleRate: 16000,
   deviceId: null,
-  filterOrder: 50
+  filterOrder: 50,
+};
+
+WebVoiceProcessor.setOptions(options);
+```
+
+### Custom Recorder Processor
+
+**NOTE**: Issues related to custom recorder processor implementations are out of the scope of this repo.
+
+Take a look at [recorder_processor.js](src/audio_worklet/recorder_processor.js) in this repo as a reference
+on how to create a simple recorder processor. To learn more about creating a recorder processor,
+check out [AudioWorkletProcessor](https://developer.mozilla.org/en-US/docs/Web/API/AudioWorkletProcessor) docs.
+
+Add the option `customRecorderProcessorURL` to options object to use your own recorder processor.
+Enter the string to the custom recorder processor URL or leave it blank to use the default recorder processor.
+
+```javascript
+// Override default options
+let options = {
+  frameLength: 512,
+  outputSampleRate: 16000,
+  deviceId: null,
+  filterOrder: 50,
+  customRecorderProcessorURL: "${URL_PATH_TO_RECORDER_PROCESSOR}"
 };
 
 WebVoiceProcessor.setOptions(options);
