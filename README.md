@@ -2,7 +2,7 @@
 
 [![GitHub release](https://img.shields.io/github/release/Picovoice/web-voice-processor.svg)](https://github.com/Picovoice/web-voice-processor/releases)
 [![GitHub](https://img.shields.io/github/license/Picovoice/web-voice-processor)](https://github.com/Picovoice/web-voice-processor/releases)
-[![npm](https://img.shields.io/npm/v/@picovoice/web-voice-processor?label=npm%20%5Bweb%5D)](https://www.npmjs.com/package/@picovoice/web-voice-processor)
+[![npm](https://img.shields.io/npm/v/@picovoice/web-voice-processor?label=npm%20%5Bweb%5D)](https://www.npmjs.com/package/@picovoice/web-voice-processor)<!-- markdown-link-check-disable-line -->
 
 Made in Vancouver, Canada by [Picovoice](https://picovoice.ai)
 
