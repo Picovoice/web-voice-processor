@@ -37,6 +37,7 @@ export class WvpError extends Error {
  */
 export class WebVoiceProcessor {
   private _mutex = new Mutex();
+  private _resamplerMutex = new Mutex()
 
   private _audioContext: AudioContext | null = null;
   private _microphoneStream: MediaStream | null = null;
@@ -273,26 +274,28 @@ export class WebVoiceProcessor {
   }
 
   private recorderCallback(inputFrame: Int16Array): void {
-    for (const engine of this._engines) {
-      if (engine.worker && engine.worker.postMessage) {
-        engine.worker.postMessage({
-          command: 'process',
-          inputFrame: inputFrame
-        });
-      } else if (engine.postMessage) {
-        engine.postMessage({
-          command: 'process',
-          inputFrame: inputFrame
-        });
-      } else if (engine.onmessage) {
-        engine.onmessage({
-          data: {
+    this._resamplerMutex.runExclusive(async () => {
+      for (const engine of this._engines) {
+        if (engine.worker && engine.worker.postMessage) {
+          engine.worker.postMessage({
             command: 'process',
             inputFrame: inputFrame
-          }
-        } as MessageEvent);
+          });
+        } else if (engine.postMessage) {
+          engine.postMessage({
+            command: 'process',
+            inputFrame: inputFrame
+          });
+        } else if (engine.onmessage) {
+          await engine.onmessage({
+            data: {
+              command: 'process',
+              inputFrame: inputFrame
+            }
+          } as MessageEvent);
+        }
       }
-    }
+    })
   }
 
   private async getAudioContext(): Promise<AudioContext> {
