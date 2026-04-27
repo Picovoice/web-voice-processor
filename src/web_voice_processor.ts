@@ -37,7 +37,7 @@ export class WvpError extends Error {
  */
 export class WebVoiceProcessor {
   private _mutex = new Mutex();
-  private _resamplerMutex = new Mutex()
+  private _resamplerMutex = new Mutex();
 
   private _audioContext: AudioContext | null = null;
   private _microphoneStream: MediaStream | null = null;
@@ -295,7 +295,7 @@ export class WebVoiceProcessor {
           } as MessageEvent);
         }
       }
-    })
+    });
   }
 
   private async getAudioContext(): Promise<AudioContext> {
